@@ -122,14 +122,9 @@
       <i class="fas fa-link"></i>
       <span>{{ tool.url }}</span>
     </div>
-    <div style="display: flex; gap: 8px; margin-top: auto; width: 100%;">
-      <button class="btn btn-primary launch-btn" style="flex: 1;" onclick="useTool({{ tool.id }}, '{{ tool.name }}', '{{ tool.url }}', this)">
-        <i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>
-      </button>
-      <a href="/use/{{ tool.id }}/download" class="btn btn-outline" style="padding: 0 14px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md);" title="Download Cookies JSON" download>
-        <i class="fas fa-download" style="color: var(--slate-500);"></i>
-      </a>
-    </div>
+    <button class="btn btn-primary launch-btn" onclick="useTool({{ tool.id }}, '{{ tool.name }}', '{{ tool.url }}', this)">
+      <i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>
+    </button>
   </div>
   {% endfor %}
 </div>
@@ -168,23 +163,50 @@
   function useTool(id, name, url, btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching...';
-    showToast('Starting <strong>' + name + '</strong>...', 'info');
+    showToast('Authorizing session for <strong>' + name + '</strong>...', 'info');
 
+    // 1. Get cookies & launch configuration from the backend
     fetch('/use/' + id)
       .then(function(r){ return r.json(); })
       .then(function(d){
+        if (!d.ok) {
+          throw new Error(d.msg || 'Access denied.');
+        }
+
+        showToast('Connecting to local helper app...', 'info');
+
+        // 2. Send the cookies to the local helper app running on the user's laptop
+        return fetch('http://localhost:5000/local-launch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            url: d.url,
+            cookies: d.cookies,
+            username: d.username
+          })
+        });
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(res){
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-        if (d.ok) {
-          showToast('✅ <strong>' + name + '</strong> opened!<br>Check your taskbar for Chromium.', 'success');
+        if (res.ok) {
+          showToast('✅ <strong>' + name + '</strong> browser opened!<br>Check your taskbar.', 'success');
         } else {
-          showToast('❌ ' + (d.msg || 'Launch failed.'), 'error');
+          showToast('❌ Launch failed: ' + (res.error || 'unknown error'), 'error');
         }
       })
       .catch(function(e){
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-        showToast('❌ Error: ' + e.message, 'error');
+        
+        let msg = e.message;
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+          msg = 'Local helper is not running!<br>Please run <strong>setup_and_run.bat</strong> on your laptop first.';
+        }
+        showToast('❌ ' + msg, 'error');
       });
   }
 </script>

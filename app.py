@@ -372,36 +372,36 @@ def use_tool(tid):
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
     db.session.commit()
 
-    result = open_tool(tool.url, tool.cookies, session['username'])
-    if result.get('ok'):
-        return jsonify({'ok': True, 'msg': result.get('msg', f'Opening {tool.name}...')})
-    return jsonify({'ok': False, 'msg': f'Launch failed: {result.get("error", "unknown")}'})
+    return jsonify({
+        'ok': True,
+        'url': tool.url,
+        'cookies': tool.cookies,
+        'username': session['username']
+    })
 
 
-@app.route('/use/<int:tid>/download')
-@login_required
-def download_cookies(tid):
-    uid        = session['uid']
-    assignment = UserTool.query.filter_by(user_id=uid, tool_id=tid).first()
-    if not assignment:
-        return 'Access denied.', 403
+@app.route('/local-launch', methods=['POST', 'OPTIONS'])
+def local_launch():
+    if request.method == 'OPTIONS':
+        response = app.response_class(status=204)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        return response
 
-    tool = Tool.query.get_or_404(tid)
-    if not tool.is_active:
-        return 'Tool is disabled.', 403
+    data = request.json or {}
+    url = data.get('url')
+    cookies = data.get('cookies')
+    username = data.get('username')
 
-    # Log usage
-    db.session.add(UsageLog(user_id=uid, tool_id=tid))
-    db.session.commit()
+    if not url or not cookies or not username:
+        response = jsonify({'ok': False, 'error': 'Missing parameters'})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 400
 
-    # Return cookies JSON file as a attachment download
-    response = app.response_class(
-        response=tool.cookies,
-        status=200,
-        mimetype='application/json'
-    )
-    filename = f"cookies_{tool.name.lower().replace(' ', '_')}.json"
-    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    result = open_tool(url, cookies, username)
+    response = jsonify(result)
+    response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
 
