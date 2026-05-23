@@ -1,0 +1,15 @@
+# Core
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.1
+bcrypt>=4.1.0
+python-dotenv>=1.0.0
+
+# Browser automation (cookie injection)
+playwright>=1.40.0
+
+# PostgreSQL (optional – only needed when NEON_DB_URL is set)
+psycopg2-binary>=2.9.9
+
+# Production servers (optional – only needed for deployment)
+gunicorn>=21.2.0
+waitress>=3.0.0

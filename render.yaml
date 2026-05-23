@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: account-hub
+    runtime: image
+    repo: https://github.com/yourusername/account-hub
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NEON_DB_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: RENDER
+        value: "1"
+      - key: APP_ENV
+        value: "production"

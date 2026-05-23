@@ -1,0 +1,274 @@
+{% extends "layout.html" %}
+{% block title %}Manage Tools - AccountHub{% endblock %}
+{% block page_title %}Tool Manager{% endblock %}
+
+{% block header_stats %}
+<div class="header-stat">
+  <div class="num">{{ tools|length }}</div>
+  <div class="label">Total Tools</div>
+</div>
+<div class="header-stat">
+  <div class="num" style="color:var(--success)">{{ tools|selectattr('is_active')|list|length }}</div>
+  <div class="label">Active</div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="showAddPanel()"><i class="fas fa-plus"></i> New Tool</button>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .cat-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .cat-streaming { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .cat-ai-tools { background-color: #ecfeff; color: #0f766e; border: 1px solid #cffafe; }
+  .cat-design { background-color: #fdf2f8; color: #be185d; border: 1px solid #fbcfe8; }
+  .cat-learning { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+  .cat-productivity { background-color: #f5f3ff; color: #6d28d9; border: 1px solid #e9d5ff; }
+  .cat-general { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+  .action-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toggle-status-btn {
+    border: 1px solid var(--border-color);
+    background-color: white;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate-600);
+    transition: all 0.15s;
+  }
+  .toggle-status-btn:hover {
+    background-color: var(--slate-100);
+    color: var(--slate-900);
+  }
+
+  /* Form Section Style */
+  .add-panel-card {
+    border: 1px solid var(--primary);
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.05);
+    background-color: white;
+    margin-bottom: 24px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .cookie-status {
+    font-size: 12px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+</style>
+{% endblock %}
+
+{% block toolbar %}
+<div class="toolbar" style="margin-bottom:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg)">
+  <input class="toolbar-search" id="searchInput" placeholder="Search tools..." oninput="filterTable()">
+  <span style="color:var(--slate-300)">|</span>
+  <span style="font-size:12px;color:var(--slate-500);font-weight:500"><i class="fas fa-info-circle"></i> Type to filter the table in real time</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Add New Tool Form Card -->
+<div class="add-panel-card" id="addPanel" style="display:none">
+  <div class="card-header" style="background-color:var(--slate-50)">
+    <h3><i class="fas fa-plus-circle" style="color:var(--primary)"></i> Add New Tool Account</h3>
+    <button class="btn-icon" onclick="showAddPanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/admin/tools/add">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:16px">
+        <div class="form-group">
+          <label>Tool/Website Name</label>
+          <input class="form-control" name="name" placeholder="e.g. Canva Pro" required>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select class="form-control" name="category">
+            <option>Streaming</option>
+            <option>AI Tools</option>
+            <option>Design</option>
+            <option>Learning</option>
+            <option>Productivity</option>
+            <option>General</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Launch Website URL</label>
+        <input class="form-control" name="url" type="url" placeholder="https://canva.com" required>
+      </div>
+      
+      <div class="form-group">
+        <label>Public Description</label>
+        <input class="form-control" name="description" placeholder="Brief instruction or note for users (optional)">
+      </div>
+      
+      <div class="form-group">
+        <label>Session Cookies (JSON Array) <span style="font-weight:normal;text-transform:none;color:var(--slate-400)">(exported via cookie editor)</span></label>
+        <textarea class="form-control" name="cookies" id="cookieBox" placeholder='[{"name":"session_id","value":"abc...","domain":".canva.com"}]' required></textarea>
+        <div id="cookieCount" class="cookie-status"></div>
+      </div>
+      
+      <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px">
+        <button type="button" class="btn btn-outline" onclick="showAddPanel()">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Tool Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tools List Table Card -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fas fa-cubes" style="color:var(--primary)"></i> Active Premium Accounts</h3>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrap" style="border:none;border-radius:0">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox" onchange="toggleAll(this)"></th>
+            <th style="width:60px">ID</th>
+            <th>Account details</th>
+            <th>Category</th>
+            <th>URL / Link</th>
+            <th>Status</th>
+            <th style="width:120px;text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tools %}
+          <tr class="tool-row">
+            <td><input type="checkbox"></td>
+            <td style="color:var(--slate-400);font-weight:500">#{{ t.id }}</td>
+            <td>
+              <div style="font-weight:600;color:var(--slate-900)">{{ t.name }}</div>
+              {% if t.description %}
+                <div style="color:var(--slate-500);font-size:11px;margin-top:2px">{{ t.description }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% set cat_class = t.category.lower().replace(' ', '-') %}
+              <span class="cat-badge cat-{{ cat_class if cat_class in ['streaming','ai-tools','design','learning','productivity','general'] else 'general' }}">
+                {{ t.category }}
+              </span>
+            </td>
+            <td style="color:var(--slate-500);font-size:12px">
+              <i class="fas fa-external-link-alt" style="font-size:10px;margin-right:4px;color:var(--slate-400)"></i>
+              {{ t.url[:40] }}{% if t.url|length > 40 %}...{% endif %}
+            </td>
+            <td>
+              <span class="badge {{ 'badge-on' if t.is_active else 'badge-off' }}" id="badge-{{ t.id }}">
+                <i class="fas fa-{{ 'check-circle' if t.is_active else 'times-circle' }}"></i>
+                {{ 'Active' if t.is_active else 'Disabled' }}
+              </span>
+            </td>
+            <td align="right">
+              <div class="action-btn-group" style="justify-content:flex-end">
+                <button class="toggle-status-btn" onclick="toggle({{ t.id }})" title="Toggle Active Status">
+                  <i class="fas fa-power-off"></i>
+                </button>
+                <form method="POST" action="/admin/tools/delete/{{ t.id }}" style="display:inline" onsubmit="return confirm('Permanently delete {{ t.name }} account?')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete Account"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="empty-state">
+              <i class="fas fa-cube"></i>
+              <h3>No tools registered</h3>
+              <p>Click "New Tool" at the top right to register your first premium account session.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('cookieBox')?.addEventListener('input', function() {
+    const el = document.getElementById('cookieCount');
+    if (!this.value.trim()) {
+      el.innerHTML = '';
+      return;
+    }
+    try {
+      const arr = JSON.parse(this.value);
+      if (Array.isArray(arr)) {
+        el.innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Valid JSON Array containing ' + arr.length + ' cookie(s)';
+        el.style.color = 'var(--success)';
+      } else {
+        el.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--danger)"></i> Invalid format: Must be a JSON Array';
+        el.style.color = 'var(--danger)';
+      }
+    } catch(e) {
+      el.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--danger)"></i> Invalid JSON syntax';
+      el.style.color = 'var(--danger)';
+    }
+  });
+
+  function showAddPanel() {
+    const p = document.getElementById('addPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if(p.style.display === 'block') {
+      p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function toggle(id) {
+    fetch('/admin/tools/toggle/' + id, { 
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token() }}'
+      }
+    })
+      .then(r => r.json())
+      .then(d => {
+        const b = document.getElementById('badge-' + id);
+        b.className = 'badge ' + (d.active ? 'badge-on' : 'badge-off');
+        b.innerHTML = '<i class="fas fa-' + (d.active ? 'check-circle' : 'times-circle') + '"></i> ' + (d.active ? 'Active' : 'Disabled');
+      });
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.tool-row').forEach(function(r) {
+      r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  function toggleAll(cb) {
+    document.querySelectorAll('.tool-row input[type=checkbox]').forEach(function(c) {
+      c.checked = cb.checked;
+    });
+  }
+</script>
+{% endblock %}

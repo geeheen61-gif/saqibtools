@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+{% block title %}Manage Users - AccountHub{% endblock %}
+{% block page_title %}User Manager{% endblock %}
+
+{% block header_stats %}
+<div class="header-stat">
+  <div class="num">{{ users|length }}</div>
+  <div class="label">Total Users</div>
+</div>
+<div class="header-stat">
+  <div class="num" style="color:var(--success)">{{ users|selectattr('is_active')|list|length }}</div>
+  <div class="label">Active</div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="showCreatePanel()"><i class="fas fa-user-plus"></i> New User</button>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .action-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .user-action-btn {
+    border: 1px solid var(--border-color);
+    background-color: white;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate-600);
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .user-action-btn:hover {
+    background-color: var(--slate-100);
+    color: var(--slate-900);
+    border-color: var(--slate-300);
+  }
+
+  /* Form Section Style */
+  .create-panel-card {
+    border: 1px solid var(--primary);
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.05);
+    background-color: white;
+    margin-bottom: 24px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+</style>
+{% endblock %}
+
+{% block toolbar %}
+<div class="toolbar" style="margin-bottom:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg)">
+  <input class="toolbar-search" id="searchInput" placeholder="Search users..." oninput="filterTable()">
+  <span style="color:var(--slate-300)">|</span>
+  <span style="font-size:12px;color:var(--slate-500);font-weight:500"><i class="fas fa-info-circle"></i> Type to filter users by name</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Create User Form Card -->
+<div class="create-panel-card" id="createPanel" style="display:none">
+  <div class="card-header" style="background-color:var(--slate-50)">
+    <h3><i class="fas fa-user-plus" style="color:var(--primary)"></i> Create New User Account</h3>
+    <button class="btn-icon" onclick="showCreatePanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/admin/users/add">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;align-items:flex-end">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Username</label>
+          <input class="form-control" name="username" placeholder="e.g. sachal_dev" required autocomplete="off">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Password</label>
+          <input class="form-control" type="password" name="password" placeholder="Create login password" required autocomplete="new-password">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn btn-outline" style="flex:1" onclick="showCreatePanel()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex:1"><i class="fas fa-check"></i> Create User</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Users List Table Card -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fas fa-users" style="color:var(--primary)"></i> Active Users</h3>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrap" style="border:none;border-radius:0">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:60px">ID</th>
+            <th>Username</th>
+            <th>Access Status</th>
+            <th>Registered Date</th>
+            <th style="width:160px;text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr class="user-row">
+            <td><input type="checkbox"></td>
+            <td style="color:var(--slate-400);font-weight:500">#{{ u.id }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar-sm" style="width:24px;height:24px;border-radius:50%;background-color:var(--slate-100);color:var(--slate-600);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">
+                  {{ u.username[:2].upper() }}
+                </div>
+                <strong style="color:var(--slate-900)">{{ u.username }}</strong>
+              </div>
+            </td>
+            <td>
+              <span class="badge {{ 'badge-on' if u.is_active else 'badge-off' }}" id="ubadge-{{ u.id }}">
+                <i class="fas fa-{{ 'check-circle' if u.is_active else 'times-circle' }}"></i>
+                {{ 'Active' if u.is_active else 'Blocked' }}
+              </span>
+            </td>
+            <td style="color:var(--slate-500)">
+              <i class="far fa-calendar-alt" style="margin-right:6px;color:var(--slate-400)"></i>
+              {{ u.created_at.strftime('%Y-%m-%d') }}
+            </td>
+            <td align="right">
+              <div class="action-btn-group" style="justify-content:flex-end">
+                <button class="user-action-btn" onclick="toggleUser({{ u.id }})" title="Toggle Active Status (Block/Unblock)">
+                  <i class="fas fa-ban"></i>
+                </button>
+                <a href="/admin/assign" class="user-action-btn" title="Edit Assigned Access">
+                  <i class="fas fa-key"></i>
+                </a>
+                <form method="POST" action="/admin/users/delete/{{ u.id }}" style="display:inline" onsubmit="return confirm('Permanently delete user {{ u.username }}?')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete User"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="empty-state">
+              <i class="fas fa-users"></i>
+              <h3>No users found</h3>
+              <p>Click "New User" at the top right to create a user account.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showCreatePanel() {
+    const p = document.getElementById('createPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if(p.style.display === 'block') {
+      p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function toggleUser(id) {
+    fetch('/admin/users/toggle/' + id, { 
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token() }}'
+      }
+    })
+      .then(r => r.json())
+      .then(d => {
+        const b = document.getElementById('ubadge-' + id);
+        b.className = 'badge ' + (d.active ? 'badge-on' : 'badge-off');
+        b.innerHTML = '<i class="fas fa-' + (d.active ? 'check-circle' : 'times-circle') + '"></i> ' + (d.active ? 'Active' : 'Blocked');
+      });
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.user-row').forEach(function(r) {
+      r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "layout.html" %}
+{% block title %}Assign Access - AccountHub{% endblock %}
+{% block page_title %}Access Manager{% endblock %}
+{% block header_badge %}<span class="badge badge-active">{{ users|length }} Users</span>{% endblock %}
+
+{% block styles %}
+<style>
+  .user-assign-card {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .user-assign-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--slate-300);
+  }
+  .user-meta {
+    border-right: 1px solid var(--slate-100);
+    padding-right: 16px;
+  }
+  .user-meta-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate-900);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    word-break: break-all;
+  }
+  .user-meta-id {
+    font-size: 11px;
+    color: var(--slate-400);
+    margin-top: 4px;
+  }
+  
+  .tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .user-assign-card {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .user-meta {
+      border-right: none;
+      border-bottom: 1px solid var(--slate-100);
+      padding-right: 0;
+      padding-bottom: 12px;
+    }
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary);
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 360px;
+    z-index: 9999;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.info { border-left-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not users %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>No registered users</h3>
+    <p>Please <a href="/admin/users" style="color:var(--primary);font-weight:600">register users first</a> before assigning access.</p>
+  </div>
+</div>
+{% elif not tools %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-cube"></i>
+    <h3>No active tools found</h3>
+    <p>Please <a href="/admin/tools" style="color:var(--primary);font-weight:600">register premium accounts first</a>.</p>
+  </div>
+</div>
+{% else %}
+<div style="margin-bottom:20px">
+  <p style="font-size:13px;color:var(--slate-500);font-weight:500">
+    <i class="fas fa-magic" style="color:var(--primary);margin-right:6px"></i>
+    <strong>Instant Auto-Save:</strong> Check or uncheck account pills to update access instantly without refreshing.
+  </p>
+</div>
+
+<div>
+  {% for user in users %}
+  <form method="POST" action="/admin/assign/update" data-username="{{ user.username }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="user_id" value="{{ user.id }}">
+    <div class="user-assign-card">
+      <div class="user-meta">
+        <div class="user-meta-name">
+          <i class="fas fa-user" style="color:var(--primary);font-size:13px"></i>
+          <span>{{ user.username }}</span>
+        </div>
+        <div class="user-meta-id">User ID: #{{ user.id }}</div>
+      </div>
+      
+      <div class="tools-list">
+        {% for tool in tools %}
+        <label class="checkbox-wrap">
+          <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
+            {{ 'checked' if tool.id in assignments.get(user.id, []) else '' }}
+            onchange="saveAssignment(this)">
+          <span>{{ tool.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="toast" id="toast">
+  <i id="toastIcon"></i>
+  <span id="toastText"></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let toastTimer;
+  function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    const icon = document.getElementById('toastIcon');
+    const text = document.getElementById('toastText');
+    
+    t.className = 'toast show ' + type;
+    text.innerHTML = msg;
+    
+    if (type === 'success') {
+      icon.className = 'fas fa-check-circle';
+      icon.style.color = 'var(--success)';
+    } else if (type === 'error') {
+      icon.className = 'fas fa-exclamation-circle';
+      icon.style.color = 'var(--danger)';
+    } else {
+      icon.className = 'fas fa-spinner fa-spin';
+      icon.style.color = 'var(--primary)';
+    }
+    
+    clearTimeout(toastTimer);
+    if (type !== 'info') {
+      toastTimer = setTimeout(() => {
+        t.classList.remove('show');
+      }, 3500);
+    }
+  }
+
+  function saveAssignment(checkbox) {
+    const form = checkbox.closest('form');
+    const username = form.getAttribute('data-username');
+    const formData = new FormData(form);
+    
+    showToast('Saving access configuration for <strong>' + username + '</strong>...', 'info');
+    
+    fetch('/admin/assign/update?ajax=1', {
+      method: 'POST',
+      body: formData
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        showToast('Successfully updated access for <strong>' + username + '</strong>!', 'success');
+      } else {
+        showToast(d.msg || 'Failed to update access.', 'error');
+        // Revert checkbox state
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change'));
+      }
+    })
+    .catch(e => {
+      showToast('Error: ' + e.message, 'error');
+      // Revert checkbox state
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event('change'));
+    });
+  }
+</script>
+{% endblock %}
