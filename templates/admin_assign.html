@@ -40,53 +40,52 @@
     color: var(--slate-400);
     margin-top: 4px;
   }
-  .duration-selector {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--slate-100);
-  }
-  .duration-selector label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--slate-500);
-    display: block;
-    margin-bottom: 4px;
-  }
-  .duration-selector select {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    background: white;
-    cursor: pointer;
-  }
-  .expiry-badge {
-    margin-top: 8px;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-  }
-  .expiry-ok {
-    background-color: #f0fdf4;
-    color: #15803d;
-  }
-  .expiry-warn {
-    background-color: #fffbeb;
-    color: #b45309;
-  }
-  .expired {
-    background-color: #fef2f2;
-    color: #dc2626;
-  }
   .tools-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
   }
+  .tool-assign-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--slate-100);
+    background: var(--slate-50);
+  }
+  .tool-assign-row:hover {
+    border-color: var(--slate-200);
+    background: white;
+  }
+  .tool-assign-row input[type="checkbox"] {
+    accent-color: var(--primary);
+  }
+  .tool-assign-row .tool-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-800);
+  }
+  .tool-assign-row select {
+    padding: 4px 6px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    background: white;
+    cursor: pointer;
+    min-width: 90px;
+  }
+  .expiry-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .expiry-ok { background: #f0fdf4; color: #15803d; }
+  .expiry-warn { background: #fffbeb; color: #b45309; }
+  .expired { background: #fef2f2; color: #dc2626; }
 
   @media (max-width: 768px) {
     .user-assign-card {
@@ -98,6 +97,9 @@
       border-bottom: 1px solid var(--slate-100);
       padding-right: 0;
       padding-bottom: 12px;
+    }
+    .tool-assign-row {
+      flex-wrap: wrap;
     }
   }
 
@@ -154,15 +156,13 @@
 <div style="margin-bottom:20px">
   <p style="font-size:13px;color:var(--slate-500);font-weight:500">
     <i class="fas fa-magic" style="color:var(--primary);margin-right:6px"></i>
-    <strong>Instant Auto-Save:</strong> Changes save automatically as you check/uncheck tools or change subscription duration.
+    <strong>Instant Auto-Save:</strong> Changes save automatically. Check a tool, set its duration — done.
   </p>
 </div>
 
 <div>
   {% for user in users %}
-  {% set expiry = user_expiry.get(user.id) %}
   {% set now = now_utc() %}
-  {% set is_expired = expiry and expiry < now %}
   <form method="POST" action="/admin/assign/update" data-username="{{ user.username }}">
     <input type="hidden" name="user_id" value="{{ user.id }}">
     <div class="user-assign-card">
@@ -172,37 +172,36 @@
           <span>{{ user.username }}</span>
         </div>
         <div class="user-meta-id">User ID: #{{ user.id }}</div>
-        
-        <div class="duration-selector">
-          <label><i class="fas fa-clock"></i> Subscription Duration</label>
-          <select name="duration" onchange="saveDuration(this)">
-            <option value="" {{ 'selected' if not expiry else '' }}>No expiry</option>
-            <option value="week" {{ 'selected' if expiry and not is_expired and (expiry - now).days <= 7 else '' }}>1 Week</option>
-            <option value="month" {{ 'selected' if expiry and not is_expired and 7 < (expiry - now).days <= 31 else '' }}>1 Month</option>
-            <option value="year" {{ 'selected' if expiry and not is_expired and (expiry - now).days > 31 else '' }}>1 Year</option>
-          </select>
-        </div>
-        
-        {% if expiry %}
-        <div class="expiry-badge {{ 'expired' if is_expired else ('expiry-warn' if (expiry - now).days <= 7 else 'expiry-ok') }}">
-          {% if is_expired %}
-            <i class="fas fa-exclamation-circle"></i> Expired {{ expiry.strftime('%Y-%m-%d') }}
-          {% else %}
-            <i class="fas fa-check-circle"></i> Expires {{ expiry.strftime('%Y-%m-%d') }} ({{ (expiry - now).days }}d left)
-          {% endif %}
-        </div>
-        {% endif %}
       </div>
       
       <div class="tools-list">
         {% for tool in tools %}
-        <label class="checkbox-wrap {{ 'disabled-label' if is_expired else '' }}">
+        {% set checked = tool.id in assignments.get(user.id, []) %}
+        {% set expiry = tool_expiry.get(user.id, {}).get(tool.id) %}
+        {% set is_expired = expiry and expiry < now %}
+        {% set dur = '' %}
+        {% if expiry and not is_expired %}
+          {% set days_left = (expiry - now).days %}
+          {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
+        {% endif %}
+        <div class="tool-assign-row" style="{{ 'opacity:0.5' if is_expired else '' }}">
           <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
-            {{ 'checked' if tool.id in assignments.get(user.id, []) else '' }}
-            onchange="saveAssignment(this)"
+            {{ 'checked' if checked else '' }}
+            onchange="saveForm(this)"
             {{ 'disabled' if is_expired else '' }}>
-          <span>{{ tool.name }}</span>
-        </label>
+          <span class="tool-name">{{ tool.name }}</span>
+          <select name="dur_{{ tool.id }}" onchange="saveForm(this)" {{ 'disabled' if is_expired else '' }}>
+            <option value="">No expiry</option>
+            <option value="week" {{ 'selected' if dur == 'week' else '' }}>1 Week</option>
+            <option value="month" {{ 'selected' if dur == 'month' else '' }}>1 Month</option>
+            <option value="year" {{ 'selected' if dur == 'year' else '' }}>1 Year</option>
+          </select>
+          {% if expiry %}
+          <span class="expiry-tag {{ 'expired' if is_expired else ('expiry-warn' if days_left <= 7 else 'expiry-ok') }}">
+            {% if is_expired %}Expired {{ expiry.strftime('%b %d') }}{% else %}{{ days_left }}d{% endif %}
+          </span>
+          {% endif %}
+        </div>
         {% endfor %}
       </div>
     </div>
@@ -220,52 +219,31 @@
 {% block scripts %}
 <script>
   let toastTimer;
-  function showToast(msg, type = 'info') {
-    const t = document.getElementById('toast');
-    const icon = document.getElementById('toastIcon');
-    const text = document.getElementById('toastText');
-    t.className = 'toast show ' + type;
+  function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    var icon = document.getElementById('toastIcon');
+    var text = document.getElementById('toastText');
+    t.className = 'toast show ' + (type || 'info');
     text.innerHTML = msg;
-    if (type === 'success') {
-      icon.className = 'fas fa-check-circle';
-      icon.style.color = 'var(--success)';
-    } else if (type === 'error') {
-      icon.className = 'fas fa-exclamation-circle';
-      icon.style.color = 'var(--danger)';
-    } else {
-      icon.className = 'fas fa-spinner fa-spin';
-      icon.style.color = 'var(--primary)';
-    }
+    if (type === 'success') { icon.className = 'fas fa-check-circle'; icon.style.color = 'var(--success)'; }
+    else if (type === 'error') { icon.className = 'fas fa-exclamation-circle'; icon.style.color = 'var(--danger)'; }
+    else { icon.className = 'fas fa-spinner fa-spin'; icon.style.color = 'var(--primary)'; }
     clearTimeout(toastTimer);
-    if (type !== 'info') {
-      toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
-    }
+    if (type !== 'info') toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3500);
   }
 
-  function submitForm(form) {
-    const formData = new FormData(form);
-    const username = form.getAttribute('data-username');
-    fetch('/admin/assign/update?ajax=1', {
-      method: 'POST',
-      body: formData
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.ok) {
-        showToast('Saved for <strong>' + username + '</strong>!', 'success');
-      } else {
-        showToast(d.msg || 'Save failed.', 'error');
-      }
-    })
-    .catch(e => showToast('Error: ' + e.message, 'error'));
-  }
-
-  function saveAssignment(checkbox) {
-    submitForm(checkbox.closest('form'));
-  }
-
-  function saveDuration(select) {
-    submitForm(select.closest('form'));
+  function saveForm(el) {
+    var form = el.closest('form');
+    var fd = new FormData(form);
+    var username = form.getAttribute('data-username');
+    showToast('Saving for <strong>' + username + '</strong>...', 'info');
+    fetch('/admin/assign/update?ajax=1', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok) showToast('Saved for <strong>' + username + '</strong>!', 'success');
+        else showToast(d.msg || 'Save failed.', 'error');
+      })
+      .catch(function(e){ showToast('Error: ' + e.message, 'error'); });
   }
 </script>
 {% endblock %}

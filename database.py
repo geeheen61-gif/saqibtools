@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
+_utcnow = lambda: datetime.now(timezone.UTC).replace(tzinfo=None)
 
 db = SQLAlchemy()
 
@@ -10,7 +11,7 @@ class User(db.Model):
     password    = db.Column(db.String(200), nullable=False)
     role        = db.Column(db.String(20), default='user')
     is_active   = db.Column(db.Boolean, default=True)
-    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at  = db.Column(db.DateTime, default=_utcnow)
 
     assigned_tools = db.relationship('UserTool', back_populates='user',
                                      cascade='all, delete-orphan')
@@ -24,7 +25,7 @@ class Tool(db.Model):
     description = db.Column(db.Text, default='')
     cookies     = db.Column(db.Text, nullable=False)
     is_active   = db.Column(db.Boolean, default=True)
-    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at  = db.Column(db.DateTime, default=_utcnow)
 
     assigned_users = db.relationship('UserTool', back_populates='tool',
                                      cascade='all, delete-orphan')
@@ -34,7 +35,7 @@ class UserTool(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     tool_id     = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
-    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    assigned_at = db.Column(db.DateTime, default=_utcnow)
     expires_at  = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship('User',  back_populates='assigned_tools')
@@ -45,7 +46,7 @@ class UsageLog(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     user_id     = db.Column(db.Integer, db.ForeignKey('users.id'))
     tool_id     = db.Column(db.Integer, db.ForeignKey('tools.id'))
-    opened_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    opened_at   = db.Column(db.DateTime, default=_utcnow)
 
     user = db.relationship('User')
     tool = db.relationship('Tool')
