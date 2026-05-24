@@ -88,11 +88,14 @@ echo ====================================================================
 echo   Success! Launching AccountHub Local Flask Server...
 echo ====================================================================
 echo.
-echo   * Site URL: http://localhost:5000
-echo   * Shared DB: Connecting to Neon cloud database...
+echo   * Web App:     http://localhost:5000
+echo   * Local Helper: http://localhost:5000/local-launch
+echo     (Used by the Render cloud app to open Chromium on your PC)
+echo   * Shared DB:   Connecting to Neon cloud database...
 echo.
 echo   Press CTRL+C in this window to stop the server at any time.
 echo ====================================================================
 echo.
+echo [*] Starting Flask server (web UI + local helper)...
 python app.py
 pause

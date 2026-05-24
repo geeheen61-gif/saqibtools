@@ -392,11 +392,36 @@ def use_tool(tid):
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
     db.session.commit()
 
+    on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
+    if on_render:
+        return jsonify({
+            'ok': True,
+            'mode': 'remote',
+            'url': tool.url,
+            'cookies': tool.cookies,
+            'username': session['username'],
+        })
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
-        return jsonify({'ok': True, 'msg': result.get('msg', 'Browser opened on your desktop.')})
+        return jsonify({'ok': True, 'mode': 'local', 'msg': 'Browser opened on your desktop.'})
     return jsonify({'ok': False, 'msg': result.get('error', 'Launch failed.')})
 
+
+@app.route('/local-launch', methods=['POST', 'OPTIONS'])
+def local_launch():
+    if request.method == 'OPTIONS':
+        r = app.response_class(status=204)
+        r.headers['Access-Control-Allow-Origin'] = '*'
+        r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        return r
+    data = request.json or {}
+    result = open_tool(data.get('url', ''),
+                       data.get('cookies', ''),
+                       data.get('username', ''))
+    r = jsonify(result)
+    r.headers['Access-Control-Allow-Origin'] = '*'
+    return r
 
 
 # ── Context processors ────────────────────────────────────────────────
