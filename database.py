@@ -50,3 +50,13 @@ class UsageLog(db.Model):
 
     user = db.relationship('User')
     tool = db.relationship('Tool')
+
+
+class LaunchToken(db.Model):
+    __tablename__ = 'launch_tokens'
+    token       = db.Column(db.String(64), primary_key=True)
+    url         = db.Column(db.Text, nullable=False)
+    cookies     = db.Column(db.Text, nullable=False)
+    username    = db.Column(db.String(80), nullable=False)
+    tool_name   = db.Column(db.String(100), nullable=False)
+    created_at  = db.Column(db.DateTime, default=_utcnow)

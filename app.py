@@ -8,10 +8,9 @@ from functools import wraps
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash)
 
-from database import db, User, Tool, UserTool, UsageLog
+from database import db, User, Tool, UserTool, UsageLog, LaunchToken
 from browser  import open_tool
 
-_pending_launches = {}  # token -> {url, cookies, username, tool_name}
 
 # ── Try loading .env if present ───────────────────────────────────────
 try:
@@ -409,10 +408,11 @@ def use_tool(tid):
     on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
     if on_render:
         token = secrets.token_urlsafe(16)
-        _pending_launches[token] = {
-            'url': tool.url, 'cookies': tool.cookies,
-            'username': session['username'], 'tool_name': tool.name,
-        }
+        db.session.add(LaunchToken(
+            token=token, url=tool.url, cookies=tool.cookies,
+            username=session['username'], tool_name=tool.name,
+        ))
+        db.session.commit()
         return jsonify({
             'ok': True, 'mode': 'remote', 'token': token,
             'msg': 'Opening Chromium on your PC...',
@@ -426,41 +426,42 @@ def use_tool(tid):
 
 @app.route('/api/claim-launch/<token>')
 def claim_launch(token):
-    data = _pending_launches.pop(token, None)
-    if not data:
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
         return jsonify({'ok': False, 'error': 'Invalid or expired token.'})
-    return jsonify({'ok': True, 'url': data['url'], 'cookies': data['cookies'],
-                    'username': data['username'], 'tool_name': data['tool_name']})
+    db.session.delete(lt)
+    db.session.commit()
+    return jsonify({'ok': True, 'url': lt.url, 'cookies': lt.cookies,
+                    'username': lt.username, 'tool_name': lt.tool_name})
 
 
 @app.route('/launch/<token>')
 def launch_page(token):
-    """Show instructions page and auto-download the .bat launcher."""
-    if token not in _pending_launches:
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
         return 'Invalid or expired launch token.', 404
-    data = _pending_launches[token]
     return render_template('launch.html',
-                           tool_name=data['tool_name'],
+                           tool_name=lt.tool_name,
                            token=token,
                            server_url=request.host_url.rstrip('/'))
 
 
 @app.route('/launch-download/<token>')
 def launch_download(token):
-    """Serve a .bat file that downloads launcher.py and runs it on the user's PC."""
-    if token not in _pending_launches:
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
         return 'Invalid or expired launch token.', 404
 
-    data = _pending_launches[token]
     server_url = request.host_url.rstrip('/')
+    tool_name = lt.tool_name
 
     bat_content = f"""@echo off
-title AccountHub Launcher - {data['tool_name']}
+title AccountHub Launcher - {tool_name}
 echo =====================================================================
 echo    AccountHub Launcher
 echo =====================================================================
 echo.
-echo  Tool: {data['tool_name']}
+echo  Tool: {tool_name}
 echo  This will install Playwright + Chromium (if needed) and open your
 echo  session in a separate Chromium browser window.
 echo.
@@ -493,7 +494,7 @@ pause
 """
     return bat_content, 200, {
         'Content-Type': 'application/x-bat',
-        'Content-Disposition': f'attachment; filename="launch_{data["tool_name"].replace(" ", "_")}.bat"',
+        'Content-Disposition': f'attachment; filename="launch_{tool_name.replace(" ", "_")}.bat"',
     }
 
 
