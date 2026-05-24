@@ -63,27 +63,45 @@ LAUNCH_ARGS = [
 ]
 
 
-def _format_cookies(raw_cookies):
+def _root_domain(url: str) -> str:
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc.split('@')[-1].split(':')[0]
+    parts = host.split('.')
+    if len(parts) >= 3:
+        return '.'.join(parts[1:])
+    return host
+
+
+def _format_cookies(raw_cookies, url=''):
     """Convert Cookie-Editor JSON export to Playwright format."""
+    root = _root_domain(url) if url else ''
     result = []
     for c in raw_cookies:
         if not c.get('name'):
             continue
+        domain = c.get('domain', '') or ''
+        if not domain or domain in ('null', 'undefined'):
+            domain = '.' + root if root else ''
+        if not domain:
+            continue
+        if not domain.startswith('.') and not c.get('hostOnly', False):
+            domain = '.' + domain
+
         cookie = {
             'name'    : c['name'],
             'value'   : str(c.get('value', '')),
-            'domain'  : c.get('domain', ''),
-            'path'    : c.get('path', '/'),
+            'domain'  : domain,
+            'path'    : c.get('path', '/') or '/',
             'secure'  : bool(c.get('secure', False)),
             'httpOnly': bool(c.get('httpOnly', False)),
         }
         ss = (c.get('sameSite') or '').lower()
         if ss in ('no_restriction', 'none'):
             cookie['sameSite'] = 'None'
-            cookie['secure']   = True        # required for SameSite=None
+            cookie['secure'] = True
         elif ss == 'strict':
             cookie['sameSite'] = 'Strict'
-        else:
+        elif ss == 'lax':
             cookie['sameSite'] = 'Lax'
         exp = c.get('expirationDate')
         if exp and not c.get('session'):
@@ -118,7 +136,7 @@ def _run_browser(url: str, cookies_json: str, username: str):
         from playwright.sync_api import sync_playwright
 
         raw     = json.loads(cookies_json)
-        cookies = _format_cookies(raw)
+        cookies = _format_cookies(raw, url)
         print(f'[browser] Launching  user={username!r}  cookies={len(cookies)}  url={url}')
 
         user_data_dir = tempfile.mkdtemp(prefix='pw_profile_')
@@ -142,10 +160,24 @@ def _run_browser(url: str, cookies_json: str, username: str):
             context.add_init_script(ANTI_THEFT_JS)
             context.add_init_script(_build_watermark_script(username))
 
-            # Inject cookies BEFORE navigating
-            context.add_cookies(cookies)
-
             page = context.new_page()
+
+            # Step 1: visit the root domain so Chromium accepts cookies for it
+            root = _root_domain(url)
+            if root:
+                root_url = f'https://{root}/'
+                try:
+                    page.goto(root_url, wait_until='domcontentloaded', timeout=30_000)
+                    print(f'[browser] Root domain loaded: {root_url}')
+                except Exception as e:
+                    print(f'[browser] Root domain load skipped ({e})')
+
+            # Step 2: inject cookies now that domain is "known"
+            context.add_cookies(cookies)
+            injected = context.cookies()
+            print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
+
+            # Step 3: navigate to the actual target URL with cookies
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             print(f'[browser] Page loaded: {url}')
 

@@ -214,24 +214,15 @@
           return;
         }
         if (d.mode === 'remote') {
-          showToast('Sending to local helper on your PC...', 'info');
-          fetch('http://localhost:5000/local-launch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: d.url, cookies: d.cookies, username: d.username })
-          })
-          .then(function(r){ return r.json(); })
-          .then(function(res){
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-            if (res.ok) showToast('✅ <strong>' + name + '</strong> opened on your PC!', 'success');
-            else showToast('❌ ' + (res.error || 'Local launch failed'), 'error');
-          })
-          .catch(function(e){
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-            showToast('❌ Run <strong>setup_and_run.bat</strong> on your PC first.', 'error');
-          });
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
+          var localUrl = 'http://localhost:5000/local-launch?token=' + encodeURIComponent(d.token) + '&server=' + encodeURIComponent(window.location.origin);
+          var popup = window.open(localUrl, '_blank');
+          if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+            showToast('⚠️ Popup blocked. <a href="' + localUrl + '" target="_blank" style="color:#fff;font-weight:700">Click here</a> to open manually.', 'error');
+          } else {
+            showToast('✅ Opening Chromium on your PC...', 'success');
+          }
         } else {
           btn.disabled = false;
           btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';

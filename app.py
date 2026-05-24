@@ -2,6 +2,7 @@ import os
 import json
 import bcrypt
 import secrets
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (Flask, render_template, request,
@@ -9,6 +10,8 @@ from flask import (Flask, render_template, request,
 
 from database import db, User, Tool, UserTool, UsageLog
 from browser  import open_tool
+
+_pending_launches = {}  # token -> {url, cookies, username, tool_name}
 
 # ── Try loading .env if present ───────────────────────────────────────
 try:
@@ -200,6 +203,17 @@ def admin_add_tool():
     db.session.commit()
     flash(f'Tool "{name}" added successfully!', 'success')
     return redirect(url_for('admin_tools'))
+
+
+@app.route('/admin/tools/data/<int:tid>')
+@admin_required
+def admin_tool_data(tid):
+    tool = Tool.query.get_or_404(tid)
+    return jsonify({
+        'id': tool.id, 'name': tool.name, 'category': tool.category,
+        'url': tool.url, 'description': tool.description,
+        'cookies': tool.cookies, 'is_active': tool.is_active,
+    })
 
 
 @app.route('/admin/tools/edit/<int:tid>', methods=['POST'])
@@ -394,12 +408,18 @@ def use_tool(tid):
 
     on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
     if on_render:
-        return jsonify({
-            'ok': True,
-            'mode': 'remote',
+        token = secrets.token_urlsafe(16)
+        _pending_launches[token] = {
             'url': tool.url,
             'cookies': tool.cookies,
             'username': session['username'],
+            'tool_name': tool.name,
+        }
+        return jsonify({
+            'ok': True,
+            'mode': 'remote',
+            'token': token,
+            'msg': 'Opening Chromium on your PC...',
         })
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
@@ -407,21 +427,41 @@ def use_tool(tid):
     return jsonify({'ok': False, 'msg': result.get('error', 'Launch failed.')})
 
 
-@app.route('/local-launch', methods=['POST', 'OPTIONS'])
+@app.route('/api/claim-launch/<token>')
+def claim_launch(token):
+    data = _pending_launches.pop(token, None)
+    if not data:
+        return jsonify({'ok': False, 'error': 'Invalid or expired token.'})
+    return jsonify({'ok': True, 'url': data['url'], 'cookies': data['cookies'],
+                    'username': data['username'], 'tool_name': data['tool_name']})
+
+
+@app.route('/local-launch')
 def local_launch():
-    if request.method == 'OPTIONS':
-        r = app.response_class(status=204)
-        r.headers['Access-Control-Allow-Origin'] = '*'
-        r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        return r
-    data = request.json or {}
-    result = open_tool(data.get('url', ''),
-                       data.get('cookies', ''),
-                       data.get('username', ''))
-    r = jsonify(result)
-    r.headers['Access-Control-Allow-Origin'] = '*'
-    return r
+    token = request.args.get('token', '')
+    server = request.args.get('server', '')
+    if not token or not server:
+        return 'Missing parameters. Usage: /local-launch?token=XXX&amp;server=https://your-app.onrender.com', 400
+
+    try:
+        url = f'{server}/api/claim-launch/{token}'
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception as e:
+        return f'Failed to contact server: {e}', 502
+
+    if not data.get('ok'):
+        return f'Launch failed: {data.get("error", "unknown")}', 400
+
+    result = open_tool(data['url'], data['cookies'], data['username'])
+    if result.get('ok'):
+        return f'''<html><body style="font-family:sans-serif;padding:40px;text-align:center">
+<h2>✅ {data["tool_name"]} opened!</h2>
+<p>Check your taskbar for the Chromium window.</p>
+<script>setTimeout(function(){{ window.close(); }}, 2000)</script>
+</body></html>'''
+    return f'<html><body><h3>❌ Failed: {result.get("error", "unknown")}</h3></body></html>', 500
 
 
 # ── Context processors ────────────────────────────────────────────────
