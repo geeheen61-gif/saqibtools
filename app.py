@@ -392,37 +392,10 @@ def use_tool(tid):
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
     db.session.commit()
 
-    return jsonify({
-        'ok': True,
-        'url': tool.url,
-        'cookies': tool.cookies,
-        'username': session['username']
-    })
-
-
-@app.route('/local-launch', methods=['POST', 'OPTIONS'])
-def local_launch():
-    if request.method == 'OPTIONS':
-        response = app.response_class(status=204)
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        return response
-
-    data = request.json or {}
-    url = data.get('url')
-    cookies = data.get('cookies')
-    username = data.get('username')
-
-    if not url or not cookies or not username:
-        response = jsonify({'ok': False, 'error': 'Missing parameters'})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 400
-
-    result = open_tool(url, cookies, username)
-    response = jsonify(result)
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
+    result = open_tool(tool.url, tool.cookies, session['username'])
+    if result.get('ok'):
+        return jsonify({'ok': True, 'msg': result.get('msg', 'Browser opened on your desktop.')})
+    return jsonify({'ok': False, 'msg': result.get('error', 'Launch failed.')})
 
 
 
