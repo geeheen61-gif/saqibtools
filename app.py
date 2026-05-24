@@ -340,11 +340,11 @@ def admin_assign_update():
         dur = request.form.get(f'dur_{tid}', '')
         expires_at = None
         if dur == 'week':
-        expires_at = datetime.now(timezone.UTC).replace(tzinfo=None) + timedelta(weeks=1)
-    elif dur == 'month':
-        expires_at = datetime.now(timezone.UTC).replace(tzinfo=None) + timedelta(days=30)
-    elif dur == 'year':
-        expires_at = datetime.now(timezone.UTC).replace(tzinfo=None) + timedelta(days=365)
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(weeks=1)
+        elif dur == 'month':
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
+        elif dur == 'year':
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=365)
         db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
     db.session.commit()
 
@@ -367,7 +367,7 @@ def user_dashboard():
             .filter(UserTool.user_id == uid, Tool.is_active == True)
             .all())
     tools = [r.tool for r in rows]
-    now = datetime.now(timezone.UTC).replace(tzinfo=None)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     tool_expiry = {}
     for r in rows:
         tool_expiry[r.tool_id] = r.expires_at
@@ -386,7 +386,7 @@ def use_tool(tid):
     if not tool.is_active:
         return jsonify({'ok': False, 'msg': 'Tool is disabled.'})
 
-    if assignment.expires_at and datetime.now(timezone.UTC).replace(tzinfo=None) > assignment.expires_at:
+    if assignment.expires_at and datetime.now(timezone.utc).replace(tzinfo=None) > assignment.expires_at:
         return jsonify({'ok': False, 'msg': 'Your subscription has expired.'})
 
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
@@ -429,7 +429,7 @@ def local_launch():
 # ── Context processors ────────────────────────────────────────────────
 @app.context_processor
 def inject_now():
-    return {'now_utc': lambda: datetime.now(timezone.UTC).replace(tzinfo=None)}
+    return {'now_utc': lambda: datetime.now(timezone.utc).replace(tzinfo=None)}
 
 
 @app.context_processor

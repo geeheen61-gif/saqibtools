@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
-_utcnow = lambda: datetime.now(timezone.UTC).replace(tzinfo=None)
+_utcnow = lambda: datetime.now(timezone.utc).replace(tzinfo=None)
 
 db = SQLAlchemy()
 
