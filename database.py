@@ -35,6 +35,7 @@ class UserTool(db.Model):
     user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     tool_id     = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at  = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship('User',  back_populates='assigned_tools')
     tool = db.relationship('Tool',  back_populates='assigned_users')

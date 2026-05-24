@@ -1,13 +1,21 @@
 {% extends "layout.html" %}
 {% block title %}My Tools - AccountHub{% endblock %}
 {% block page_title %}My Tools{% endblock %}
-{% block header_badge %}<span class="badge badge-active">{{ tools|length }} available</span>{% endblock %}
+{% set active_count = namespace(n=0) %}
+{% for t in tools %}{% set expiry = tool_expiry.get(t.id) %}{% if not expiry or expiry > now %}{% set active_count.n = active_count.n + 1 %}{% endif %}{% endfor %}
+{% block header_badge %}<span class="badge badge-active">{{ active_count.n }} available</span>{% endblock %}
 
 {% block header_stats %}
 <div class="header-stat">
-  <div class="num">{{ tools|length }}</div>
-  <div class="label">Assigned</div>
+  <div class="num">{{ active_count.n }}</div>
+  <div class="label">Active</div>
 </div>
+{% if tools|length > active_count.n %}
+<div class="header-stat" style="opacity:0.5">
+  <div class="num">{{ tools|length - active_count.n }}</div>
+  <div class="label">Expired</div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block styles %}
@@ -47,6 +55,20 @@
   .cat-learning { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
   .cat-productivity { background-color: #f5f3ff; color: #6d28d9; border: 1px solid #e9d5ff; }
   .cat-general { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+  .expiry-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+  .expiry-ok { background-color: #f0fdf4; color: #15803d; }
+  .expiry-warn { background-color: #fffbeb; color: #b45309; }
+  .expired-tag { background-color: #fef2f2; color: #dc2626; }
+  .tool-card.expired { opacity: 0.6; }
+  .btn-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
   .tool-icon-wrapper {
     width: 38px;
@@ -105,7 +127,9 @@
 {% if tools %}
 <div class="card-grid">
   {% for tool in tools %}
-  <div class="tool-card">
+  {% set expiry = tool_expiry.get(tool.id) %}
+  {% set is_expired = expiry and expiry < now %}
+  <div class="tool-card {{ 'expired' if is_expired else '' }}">
     <div class="tool-card-header">
       {% set cat_class = tool.category.lower().replace(' ', '-') %}
       <span class="cat-badge cat-{{ cat_class if cat_class in ['streaming','ai-tools','design','learning','productivity','general'] else 'general' }}">
@@ -122,9 +146,24 @@
       <i class="fas fa-link"></i>
       <span>{{ tool.url }}</span>
     </div>
-    <button class="btn btn-primary launch-btn" onclick="useTool({{ tool.id }}, '{{ tool.name }}', '{{ tool.url }}', this)">
+    {% if expiry %}
+    <div class="expiry-tag {{ 'expired-tag' if is_expired else ('expiry-warn' if (expiry - now).days <= 7 else 'expiry-ok') }}">
+      {% if is_expired %}
+        <i class="fas fa-exclamation-circle"></i> Expired {{ expiry.strftime('%b %d, %Y') }}
+      {% else %}
+        <i class="fas fa-check-circle"></i> {{ (expiry - now).days }}d left (until {{ expiry.strftime('%b %d') }})
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if is_expired %}
+    <button class="btn btn-primary launch-btn btn-disabled" disabled>
+      <i class="fas fa-lock"></i> <span class="btn-text">Subscription Expired</span>
+    </button>
+    {% else %}
+    <button class="btn btn-primary launch-btn" onclick="useTool({{ tool.id }}, '{{ tool.name }}', this)">
       <i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>
     </button>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
@@ -160,12 +199,11 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 4500);
   }
 
-  function useTool(id, name, url, btn) {
+  function useTool(id, name, btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching...';
     showToast('Authorizing session for <strong>' + name + '</strong>...', 'info');
 
-    // 1. Get cookies & launch configuration from the backend
     fetch('/use/' + id)
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -175,12 +213,9 @@
 
         showToast('Connecting to local helper app...', 'info');
 
-        // 2. Send the cookies to the local helper app running on the user's laptop
         return fetch('http://localhost:5000/local-launch', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: d.url,
             cookies: d.cookies,
@@ -201,9 +236,8 @@
       .catch(function(e){
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-        
-        let msg = e.message;
-        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        var msg = e.message;
+        if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) {
           msg = 'Local helper is not running!<br>Please run <strong>setup_and_run.bat</strong> on your laptop first.';
         }
         showToast('❌ ' + msg, 'error');

@@ -2,6 +2,7 @@ import os
 import json
 import bcrypt
 import secrets
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash)
@@ -317,11 +318,17 @@ def admin_assign():
     users = User.query.filter_by(role='user').all()
     tools = Tool.query.filter_by(is_active=True).all()
     assignments = {}
+    user_expiry = {}
     for ut in UserTool.query.all():
         assignments.setdefault(ut.user_id, set()).add(ut.tool_id)
+        if ut.expires_at:
+            cur = user_expiry.get(ut.user_id)
+            if cur is None or ut.expires_at > cur:
+                user_expiry[ut.user_id] = ut.expires_at
     return render_template('admin_assign.html',
                            users=users, tools=tools,
-                           assignments=assignments)
+                           assignments=assignments,
+                           user_expiry=user_expiry)
 
 
 @app.route('/admin/assign/update', methods=['POST'])
@@ -329,10 +336,19 @@ def admin_assign():
 def admin_assign_update():
     user_id  = int(request.form.get('user_id'))
     tool_ids = set(int(x) for x in request.form.getlist('tool_ids'))
+    duration = request.form.get('duration', '')
+
+    expires_at = None
+    if duration == 'week':
+        expires_at = datetime.now(timezone.utc) + timedelta(weeks=1)
+    elif duration == 'month':
+        expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    elif duration == 'year':
+        expires_at = datetime.now(timezone.utc) + timedelta(days=365)
 
     UserTool.query.filter_by(user_id=user_id).delete()
     for tid in tool_ids:
-        db.session.add(UserTool(user_id=user_id, tool_id=tid))
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
     db.session.commit()
 
     user = User.query.get(user_id)
@@ -354,7 +370,11 @@ def user_dashboard():
             .filter(UserTool.user_id == uid, Tool.is_active == True)
             .all())
     tools = [r.tool for r in rows]
-    return render_template('user_dashboard.html', tools=tools)
+    now = datetime.now(timezone.utc)
+    tool_expiry = {}
+    for r in rows:
+        tool_expiry[r.tool_id] = r.expires_at
+    return render_template('user_dashboard.html', tools=tools, tool_expiry=tool_expiry, now=now)
 
 
 @app.route('/use/<int:tid>')
@@ -368,6 +388,9 @@ def use_tool(tid):
     tool = Tool.query.get_or_404(tid)
     if not tool.is_active:
         return jsonify({'ok': False, 'msg': 'Tool is disabled.'})
+
+    if assignment.expires_at and datetime.now(timezone.utc) > assignment.expires_at:
+        return jsonify({'ok': False, 'msg': 'Your subscription has expired.'})
 
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
     db.session.commit()
@@ -408,13 +431,8 @@ def local_launch():
 
 # ── Context processors ────────────────────────────────────────────────
 @app.context_processor
-def inject_csrf():
-    """Make csrf_token() callable in all templates (simple session-based)."""
-    def csrf_token():
-        if 'csrf_token' not in session:
-            session['csrf_token'] = secrets.token_hex(16)
-        return session['csrf_token']
-    return {'csrf_token': csrf_token}
+def inject_now():
+    return {'now_utc': lambda: datetime.now(timezone.utc)}
 
 
 @app.context_processor
@@ -450,6 +468,16 @@ def internal_server_error(e):
 # ── Bootstrap DB & seed admin ─────────────────────────────────────────
 def seed():
     db.create_all()
+    # Migrate: add expires_at column if missing
+    import sqlalchemy as sa
+    insp = sa.inspect(db.engine)
+    cols = [c['name'] for c in insp.get_columns('user_tools')]
+    if 'expires_at' not in cols:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN expires_at TIMESTAMP;'))
+            conn.commit()
+        print('[MIGRATION] Added expires_at to user_tools')
+
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
         db.session.add(User(username='admin', password=hashed, role='admin'))
@@ -459,8 +487,9 @@ def seed():
         print('[OK] Admin user already exists')
 
 
+with app.app_context():
+    seed()
+
 if __name__ == '__main__':
-    with app.app_context():
-        seed()
     print(f'[OK] Running at  http://localhost:{PORT}')
     app.run(debug=False, host='0.0.0.0', port=PORT)

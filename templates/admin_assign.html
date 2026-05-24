@@ -15,7 +15,7 @@
     display: grid;
     grid-template-columns: 200px 1fr;
     gap: 24px;
-    align-items: center;
+    align-items: start;
     transition: all 0.2s;
   }
   .user-assign-card:hover {
@@ -40,7 +40,48 @@
     color: var(--slate-400);
     margin-top: 4px;
   }
-  
+  .duration-selector {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--slate-100);
+  }
+  .duration-selector label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--slate-500);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .duration-selector select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    background: white;
+    cursor: pointer;
+  }
+  .expiry-badge {
+    margin-top: 8px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+  }
+  .expiry-ok {
+    background-color: #f0fdf4;
+    color: #15803d;
+  }
+  .expiry-warn {
+    background-color: #fffbeb;
+    color: #b45309;
+  }
+  .expired {
+    background-color: #fef2f2;
+    color: #dc2626;
+  }
   .tools-list {
     display: flex;
     flex-wrap: wrap;
@@ -60,7 +101,6 @@
     }
   }
 
-  /* Toast Notification */
   .toast {
     position: fixed;
     bottom: 24px;
@@ -114,14 +154,16 @@
 <div style="margin-bottom:20px">
   <p style="font-size:13px;color:var(--slate-500);font-weight:500">
     <i class="fas fa-magic" style="color:var(--primary);margin-right:6px"></i>
-    <strong>Instant Auto-Save:</strong> Check or uncheck account pills to update access instantly without refreshing.
+    <strong>Instant Auto-Save:</strong> Changes save automatically as you check/uncheck tools or change subscription duration.
   </p>
 </div>
 
 <div>
   {% for user in users %}
+  {% set expiry = user_expiry.get(user.id) %}
+  {% set now = now_utc() %}
+  {% set is_expired = expiry and expiry < now %}
   <form method="POST" action="/admin/assign/update" data-username="{{ user.username }}">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="user_id" value="{{ user.id }}">
     <div class="user-assign-card">
       <div class="user-meta">
@@ -130,14 +172,35 @@
           <span>{{ user.username }}</span>
         </div>
         <div class="user-meta-id">User ID: #{{ user.id }}</div>
+        
+        <div class="duration-selector">
+          <label><i class="fas fa-clock"></i> Subscription Duration</label>
+          <select name="duration" onchange="saveDuration(this)">
+            <option value="" {{ 'selected' if not expiry else '' }}>No expiry</option>
+            <option value="week" {{ 'selected' if expiry and not is_expired and (expiry - now).days <= 7 else '' }}>1 Week</option>
+            <option value="month" {{ 'selected' if expiry and not is_expired and 7 < (expiry - now).days <= 31 else '' }}>1 Month</option>
+            <option value="year" {{ 'selected' if expiry and not is_expired and (expiry - now).days > 31 else '' }}>1 Year</option>
+          </select>
+        </div>
+        
+        {% if expiry %}
+        <div class="expiry-badge {{ 'expired' if is_expired else ('expiry-warn' if (expiry - now).days <= 7 else 'expiry-ok') }}">
+          {% if is_expired %}
+            <i class="fas fa-exclamation-circle"></i> Expired {{ expiry.strftime('%Y-%m-%d') }}
+          {% else %}
+            <i class="fas fa-check-circle"></i> Expires {{ expiry.strftime('%Y-%m-%d') }} ({{ (expiry - now).days }}d left)
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
       
       <div class="tools-list">
         {% for tool in tools %}
-        <label class="checkbox-wrap">
+        <label class="checkbox-wrap {{ 'disabled-label' if is_expired else '' }}">
           <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
             {{ 'checked' if tool.id in assignments.get(user.id, []) else '' }}
-            onchange="saveAssignment(this)">
+            onchange="saveAssignment(this)"
+            {{ 'disabled' if is_expired else '' }}>
           <span>{{ tool.name }}</span>
         </label>
         {% endfor %}
@@ -161,10 +224,8 @@
     const t = document.getElementById('toast');
     const icon = document.getElementById('toastIcon');
     const text = document.getElementById('toastText');
-    
     t.className = 'toast show ' + type;
     text.innerHTML = msg;
-    
     if (type === 'success') {
       icon.className = 'fas fa-check-circle';
       icon.style.color = 'var(--success)';
@@ -175,22 +236,15 @@
       icon.className = 'fas fa-spinner fa-spin';
       icon.style.color = 'var(--primary)';
     }
-    
     clearTimeout(toastTimer);
     if (type !== 'info') {
-      toastTimer = setTimeout(() => {
-        t.classList.remove('show');
-      }, 3500);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
     }
   }
 
-  function saveAssignment(checkbox) {
-    const form = checkbox.closest('form');
-    const username = form.getAttribute('data-username');
+  function submitForm(form) {
     const formData = new FormData(form);
-    
-    showToast('Saving access configuration for <strong>' + username + '</strong>...', 'info');
-    
+    const username = form.getAttribute('data-username');
     fetch('/admin/assign/update?ajax=1', {
       method: 'POST',
       body: formData
@@ -198,20 +252,20 @@
     .then(r => r.json())
     .then(d => {
       if (d.ok) {
-        showToast('Successfully updated access for <strong>' + username + '</strong>!', 'success');
+        showToast('Saved for <strong>' + username + '</strong>!', 'success');
       } else {
-        showToast(d.msg || 'Failed to update access.', 'error');
-        // Revert checkbox state
-        checkbox.checked = !checkbox.checked;
-        checkbox.dispatchEvent(new Event('change'));
+        showToast(d.msg || 'Save failed.', 'error');
       }
     })
-    .catch(e => {
-      showToast('Error: ' + e.message, 'error');
-      // Revert checkbox state
-      checkbox.checked = !checkbox.checked;
-      checkbox.dispatchEvent(new Event('change'));
-    });
+    .catch(e => showToast('Error: ' + e.message, 'error'));
+  }
+
+  function saveAssignment(checkbox) {
+    submitForm(checkbox.closest('form'));
+  }
+
+  function saveDuration(select) {
+    submitForm(select.closest('form'));
   }
 </script>
 {% endblock %}

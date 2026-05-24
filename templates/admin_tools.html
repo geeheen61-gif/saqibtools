@@ -95,7 +95,7 @@
   </div>
   <div class="card-body">
     <form method="POST" action="/admin/tools/add">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:16px">
         <div class="form-group">
           <label>Tool/Website Name</label>
@@ -190,7 +190,7 @@
                   <i class="fas fa-power-off"></i>
                 </button>
                 <form method="POST" action="/admin/tools/delete/{{ t.id }}" style="display:inline" onsubmit="return confirm('Permanently delete {{ t.name }} account?')">
-                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      
                   <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete Account"><i class="fas fa-trash"></i></button>
                 </form>
               </div>
@@ -247,7 +247,7 @@
     fetch('/admin/tools/toggle/' + id, { 
       method: 'POST',
       headers: {
-        'X-CSRFToken': '{{ csrf_token() }}'
+        'X-Requested-With': 'XMLHttpRequest'
       }
     })
       .then(r => r.json())
