@@ -2,7 +2,7 @@ import os
 import json
 import bcrypt
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash)
@@ -340,11 +340,11 @@ def admin_assign_update():
 
     expires_at = None
     if duration == 'week':
-        expires_at = datetime.now(timezone.utc) + timedelta(weeks=1)
+        expires_at = datetime.utcnow() + timedelta(weeks=1)
     elif duration == 'month':
-        expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        expires_at = datetime.utcnow() + timedelta(days=30)
     elif duration == 'year':
-        expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+        expires_at = datetime.utcnow() + timedelta(days=365)
 
     UserTool.query.filter_by(user_id=user_id).delete()
     for tid in tool_ids:
@@ -370,7 +370,7 @@ def user_dashboard():
             .filter(UserTool.user_id == uid, Tool.is_active == True)
             .all())
     tools = [r.tool for r in rows]
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     tool_expiry = {}
     for r in rows:
         tool_expiry[r.tool_id] = r.expires_at
@@ -389,7 +389,7 @@ def use_tool(tid):
     if not tool.is_active:
         return jsonify({'ok': False, 'msg': 'Tool is disabled.'})
 
-    if assignment.expires_at and datetime.now(timezone.utc) > assignment.expires_at:
+    if assignment.expires_at and datetime.utcnow() > assignment.expires_at:
         return jsonify({'ok': False, 'msg': 'Your subscription has expired.'})
 
     db.session.add(UsageLog(user_id=uid, tool_id=tid))
@@ -432,7 +432,7 @@ def local_launch():
 # ── Context processors ────────────────────────────────────────────────
 @app.context_processor
 def inject_now():
-    return {'now_utc': lambda: datetime.now(timezone.utc)}
+    return {'now_utc': lambda: datetime.utcnow()}
 
 
 @app.context_processor
