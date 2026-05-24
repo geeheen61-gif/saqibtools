@@ -410,17 +410,14 @@ def use_tool(tid):
     if on_render:
         token = secrets.token_urlsafe(16)
         _pending_launches[token] = {
-            'url': tool.url,
-            'cookies': tool.cookies,
-            'username': session['username'],
-            'tool_name': tool.name,
+            'url': tool.url, 'cookies': tool.cookies,
+            'username': session['username'], 'tool_name': tool.name,
         }
         return jsonify({
-            'ok': True,
-            'mode': 'remote',
-            'token': token,
+            'ok': True, 'mode': 'remote', 'token': token,
             'msg': 'Opening Chromium on your PC...',
         })
+    # Local mode: auto-installs Playwright+Chromium if missing, then opens browser
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
         return jsonify({'ok': True, 'mode': 'local', 'msg': 'Browser opened on your desktop.'})
@@ -436,32 +433,68 @@ def claim_launch(token):
                     'username': data['username'], 'tool_name': data['tool_name']})
 
 
-@app.route('/local-launch')
-def local_launch():
-    token = request.args.get('token', '')
-    server = request.args.get('server', '')
-    if not token or not server:
-        return 'Missing parameters. Usage: /local-launch?token=XXX&amp;server=https://your-app.onrender.com', 400
+@app.route('/launch/<token>')
+def launch_page(token):
+    """Show instructions page and auto-download the .bat launcher."""
+    if token not in _pending_launches:
+        return 'Invalid or expired launch token.', 404
+    data = _pending_launches[token]
+    return render_template('launch.html',
+                           tool_name=data['tool_name'],
+                           token=token,
+                           server_url=request.host_url.rstrip('/'))
 
-    try:
-        url = f'{server}/api/claim-launch/{token}'
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as e:
-        return f'Failed to contact server: {e}', 502
 
-    if not data.get('ok'):
-        return f'Launch failed: {data.get("error", "unknown")}', 400
+@app.route('/launch-download/<token>')
+def launch_download(token):
+    """Serve a .bat file that downloads launcher.py and runs it on the user's PC."""
+    if token not in _pending_launches:
+        return 'Invalid or expired launch token.', 404
 
-    result = open_tool(data['url'], data['cookies'], data['username'])
-    if result.get('ok'):
-        return f'''<html><body style="font-family:sans-serif;padding:40px;text-align:center">
-<h2>✅ {data["tool_name"]} opened!</h2>
-<p>Check your taskbar for the Chromium window.</p>
-<script>setTimeout(function(){{ window.close(); }}, 2000)</script>
-</body></html>'''
-    return f'<html><body><h3>❌ Failed: {result.get("error", "unknown")}</h3></body></html>', 500
+    data = _pending_launches[token]
+    server_url = request.host_url.rstrip('/')
+
+    bat_content = f"""@echo off
+title AccountHub Launcher - {data['tool_name']}
+echo =====================================================================
+echo    AccountHub Launcher
+echo =====================================================================
+echo.
+echo  Tool: {data['tool_name']}
+echo  This will install Playwright + Chromium (if needed) and open your
+echo  session in a separate Chromium browser window.
+echo.
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [!] Python not found. Please install Python from:
+    echo     https://www.python.org/downloads/
+    echo     Make sure to check "Add Python to PATH".
+    pause
+    exit /b 1
+)
+echo [*] Downloading launcher script...
+curl -sL "{server_url}/static/launcher.py" -o "%TEMP%\\account_hub_launcher.py" 2>nul
+if not exist "%TEMP%\\account_hub_launcher.py" (
+    echo [!] Failed to download launcher script.
+    echo     Check your internet connection.
+    pause
+    exit /b 1
+)
+echo [*] Launching...
+python "%TEMP%\\account_hub_launcher.py" --token {token} --server {server_url}
+if %errorlevel% equ 0 (
+    echo.
+    echo [OK] Session launched successfully!
+) else (
+    echo.
+    echo [x] Launch failed. Try running setup_and_run.bat first.
+)
+pause
+"""
+    return bat_content, 200, {
+        'Content-Type': 'application/x-bat',
+        'Content-Disposition': f'attachment; filename="launch_{data["tool_name"].replace(" ", "_")}.bat"',
+    }
 
 
 # ── Context processors ────────────────────────────────────────────────

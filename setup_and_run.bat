@@ -89,8 +89,6 @@ echo   All done! Starting AccountHub server...
 echo ====================================================================
 echo.
 echo   Web App:     http://localhost:5000
-echo   Local Helper: http://localhost:5000/local-launch
-echo                 (Used by Render cloud app to open Chromium on your PC)
 echo   Database:    Neon cloud (shared across all devices)
 echo.
 echo   Keep this window open while using the app.
