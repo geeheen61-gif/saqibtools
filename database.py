@@ -11,10 +11,13 @@ class User(db.Model):
     password    = db.Column(db.String(200), nullable=False)
     role        = db.Column(db.String(20), default='user')
     is_active   = db.Column(db.Boolean, default=True)
+    created_by  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at  = db.Column(db.DateTime, default=_utcnow)
 
     assigned_tools = db.relationship('UserTool', back_populates='user',
                                      cascade='all, delete-orphan')
+    sub_users = db.relationship('User', backref=db.backref('creator', remote_side='User.id'),
+                                lazy='dynamic', foreign_keys=[created_by])
 
 class Tool(db.Model):
     __tablename__ = 'tools'

@@ -1,0 +1,280 @@
+{% extends "layout.html" %}
+{% block title %}Assign Access - AccountHub{% endblock %}
+{% block page_title %}Assign Access{% endblock %}
+{% block header_badge %}<span class="badge badge-active">{{ users|length }} Users</span>{% endblock %}
+
+{% block styles %}
+<style>
+  .user-assign-card {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: start;
+    transition: all 0.2s;
+  }
+  .user-assign-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--slate-300);
+  }
+  .user-meta {
+    border-right: 1px solid var(--slate-100);
+    padding-right: 16px;
+  }
+  .user-meta-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate-900);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    word-break: break-all;
+  }
+  .user-meta-id {
+    font-size: 11px;
+    color: var(--slate-400);
+    margin-top: 4px;
+  }
+  .tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tool-assign-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--slate-100);
+    background: var(--slate-50);
+  }
+  .tool-assign-row:hover {
+    border-color: var(--slate-200);
+    background: white;
+  }
+  .tool-assign-row input[type="checkbox"] {
+    accent-color: var(--primary);
+  }
+  .tool-assign-row .tool-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-800);
+  }
+  .tool-assign-row select {
+    padding: 4px 6px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    background: white;
+    cursor: pointer;
+    min-width: 90px;
+  }
+  .custom-date-input {
+    padding: 4px 6px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    width: 140px;
+  }
+  .expiry-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .expiry-ok { background: #f0fdf4; color: #15803d; }
+  .expiry-warn { background: #fffbeb; color: #b45309; }
+  .expired { background: #fef2f2; color: #dc2626; }
+
+  @media (max-width: 768px) {
+    .user-assign-card {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .user-meta {
+      border-right: none;
+      border-bottom: 1px solid var(--slate-100);
+      padding-right: 0;
+      padding-bottom: 12px;
+    }
+    .tool-assign-row {
+      flex-wrap: wrap;
+    }
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary);
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 360px;
+    z-index: 9999;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.info { border-left-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not users %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>No users yet</h3>
+    <p>Please <a href="/retailer/users" style="color:var(--primary);font-weight:600">create users first</a> before assigning access.</p>
+  </div>
+</div>
+{% elif not tools %}
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-cube"></i>
+    <h3>No active tools available</h3>
+    <p>Contact the admin to register premium accounts.</p>
+  </div>
+</div>
+{% else %}
+<div style="margin-bottom:20px">
+  <p style="font-size:13px;color:var(--slate-500);font-weight:500">
+    <i class="fas fa-magic" style="color:var(--primary);margin-right:6px"></i>
+    <strong>Instant Auto-Save:</strong> Changes save automatically.
+  </p>
+</div>
+
+<div>
+  {% for user in users %}
+  {% set now = now_utc() %}
+  <form method="POST" action="/retailer/assign/update" data-username="{{ user.username }}">
+    <input type="hidden" name="user_id" value="{{ user.id }}">
+    <div class="user-assign-card">
+      <div class="user-meta">
+        <div class="user-meta-name">
+          <i class="fas fa-user" style="color:var(--primary);font-size:13px"></i>
+          <span>{{ user.username }}</span>
+        </div>
+        <div class="user-meta-id">User ID: #{{ user.id }}</div>
+      </div>
+
+      <div class="tools-list">
+        {% for tool in tools %}
+        {% set checked = tool.id in assignments.get(user.id, []) %}
+        {% set expiry = tool_expiry.get(user.id, {}).get(tool.id) %}
+        {% set is_expired = expiry and expiry < now %}
+        {% set dur = '' %}
+        {% if expiry and not is_expired %}
+          {% set days_left = (expiry - now).days %}
+          {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
+        {% endif %}
+        <div class="tool-assign-row" style="{{ 'opacity:0.5' if is_expired else '' }}">
+          <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
+            {{ 'checked' if checked else '' }}
+            onchange="saveForm(this)"
+            {{ 'disabled' if is_expired else '' }}>
+          <span class="tool-name">{{ tool.name }}</span>
+          <select name="dur_{{ tool.id }}" class="dur-select" onchange="onDurChange(this)" {{ 'disabled' if is_expired else '' }}>
+            <option value="">No expiry</option>
+            <option value="week" {{ 'selected' if dur == 'week' else '' }}>1 Week</option>
+            <option value="month" {{ 'selected' if dur == 'month' else '' }}>1 Month</option>
+            <option value="year" {{ 'selected' if dur == 'year' else '' }}>1 Year</option>
+            <option value="custom" {{ 'selected' if dur == 'custom' else '' }}>Custom Date</option>
+          </select>
+          <input type="date" name="custom_date_{{ tool.id }}"
+                 class="custom-date-input" style="display:none"
+                 onchange="saveForm(this)" {{ 'disabled' if is_expired else '' }}
+                 value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
+          {% if expiry %}
+          <span class="expiry-tag {{ 'expired' if is_expired else ('expiry-warn' if days_left <= 7 else 'expiry-ok') }}">
+            {% if is_expired %}Expired {{ expiry.strftime('%b %d') }}{% else %}{{ days_left }}d{% endif %}
+          </span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="toast" id="toast">
+  <i id="toastIcon"></i>
+  <span id="toastText"></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let toastTimer;
+  function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    var icon = document.getElementById('toastIcon');
+    var text = document.getElementById('toastText');
+    t.className = 'toast show ' + (type || 'info');
+    text.innerHTML = msg;
+    if (type === 'success') { icon.className = 'fas fa-check-circle'; icon.style.color = 'var(--success)'; }
+    else if (type === 'error') { icon.className = 'fas fa-exclamation-circle'; icon.style.color = 'var(--danger)'; }
+    else { icon.className = 'fas fa-spinner fa-spin'; icon.style.color = 'var(--primary)'; }
+    clearTimeout(toastTimer);
+    if (type !== 'info') toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3500);
+  }
+
+  function onDurChange(el) {
+    var dateInput = el.parentElement.querySelector('.custom-date-input');
+    if (el.value === 'custom') {
+      dateInput.style.display = 'inline-block';
+    } else {
+      dateInput.style.display = 'none';
+    }
+    saveForm(el);
+  }
+
+  function saveForm(el) {
+    var form = el.closest('form');
+    var fd = new FormData(form);
+    var username = form.getAttribute('data-username');
+    showToast('Saving for <strong>' + username + '</strong>...', 'info');
+    fetch('/retailer/assign/update?ajax=1', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok) showToast('Saved for <strong>' + username + '</strong>!', 'success');
+        else showToast(d.msg || 'Save failed.', 'error');
+      })
+      .catch(function(e){ showToast('Error: ' + e.message, 'error'); });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dur-select').forEach(function(sel) {
+      if (sel.value === 'custom') {
+        var dateInput = sel.parentElement.querySelector('.custom-date-input');
+        if (dateInput) dateInput.style.display = 'inline-block';
+      }
+    });
+  });
+</script>
+{% endblock %}

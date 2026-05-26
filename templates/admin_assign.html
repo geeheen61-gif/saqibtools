@@ -5,133 +5,401 @@
 
 {% block styles %}
 <style>
-  .user-assign-card {
-    background-color: white;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-sm);
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 24px;
-    align-items: start;
+  .search-header {
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    box-shadow: 0 20px 60px rgba(79, 70, 229, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .search-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 0%, rgba(129, 140, 248, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .search-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .search-header-left i {
+    font-size: 32px;
+    color: rgba(255,255,255,0.2);
+  }
+  .search-header-left h2 {
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .search-header-left p {
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .search-header-right {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .search-header-right input {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 10px 16px 10px 40px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    width: 240px;
+    backdrop-filter: blur(8px);
     transition: all 0.2s;
   }
-  .user-assign-card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: var(--slate-300);
+  .search-header-right input::placeholder { color: rgba(255,255,255,0.4); }
+  .search-header-right input:focus { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.15); }
+  .search-header-right .search-icon {
+    position: absolute;
+    left: 14px;
+    color: rgba(255,255,255,0.4);
+    font-size: 14px;
+    pointer-events: none;
   }
-  .user-meta {
-    border-right: 1px solid var(--slate-100);
-    padding-right: 16px;
-  }
-  .user-meta-name {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--slate-900);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    word-break: break-all;
-  }
-  .user-meta-id {
-    font-size: 11px;
-    color: var(--slate-400);
-    margin-top: 4px;
-  }
-  .tools-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .tool-assign-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--slate-100);
-    background: var(--slate-50);
-  }
-  .tool-assign-row:hover {
-    border-color: var(--slate-200);
+
+  .user-card {
     background: white;
+    border: 1px solid #eef2f6;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    transition: all 0.25s ease;
+    overflow: hidden;
   }
-  .tool-assign-row input[type="checkbox"] {
-    accent-color: var(--primary);
+  .user-card:hover {
+    box-shadow: 0 8px 40px rgba(79, 70, 229, 0.08);
+    border-color: #e0e7ef;
   }
-  .tool-assign-row .tool-name {
+
+  .user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    background: linear-gradient(135deg, #fafbff, #f0f4ff);
+    border-bottom: 1px solid #eef2f6;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .user-card-header:hover { background: linear-gradient(135deg, #f5f7ff, #e8eeff); }
+
+  .user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  }
+  .user-card-header-info { flex: 1; min-width: 0; }
+  .user-card-header-info .name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-card-header-info .name small {
+    font-weight: 500;
+    color: #94a3b8;
+    font-size: 12px;
+  }
+  .user-card-header-info .meta {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .user-card-header-info .meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .user-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .user-stat {
+    text-align: center;
+    padding: 4px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(4px);
+  }
+  .user-stat .num { font-size: 18px; font-weight: 700; line-height: 1.2; }
+  .user-stat .lbl { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .user-stat .num.green { color: #10b981; }
+  .user-stat .num.orange { color: #f59e0b; }
+  .user-stat .num.red { color: #ef4444; }
+  .user-stat .num.blue { color: #4f46e5; }
+
+  .card-collapse {
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+    max-height: 0;
+    opacity: 0;
+  }
+  .card-collapse.open {
+    max-height: 3000px;
+    opacity: 1;
+  }
+
+  .user-card-body { padding: 16px 24px 20px; }
+
+  .tool-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid #f1f5f9;
+    background: #fafcff;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .tool-item:hover {
+    border-color: #cbd5e1;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .tool-item.expired {
+    opacity: 0.5;
+    background: #fefcfc;
+  }
+
+  .tool-item .cb-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .tool-item .cb-wrap input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4f46e5;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.15s;
+  }
+
+  .tool-item .tool-info {
     flex: 1;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--slate-800);
+    min-width: 0;
   }
-  .tool-assign-row select {
-    padding: 4px 6px;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--radius-sm);
+  .tool-item .tool-info .ti-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item .tool-info .ti-name .cat-tag {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .tool-item .tool-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .tool-item .tool-controls select {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
     font-size: 11px;
     background: white;
     cursor: pointer;
-    min-width: 90px;
+    outline: none;
+    font-weight: 500;
+    color: #334155;
+    min-width: 100px;
+    transition: border-color 0.15s;
   }
-  .expiry-tag {
+  .tool-item .tool-controls select:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+  .tool-item .tool-controls input[type="date"] {
+    padding: 5px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 11px;
+    background: white;
+    outline: none;
+    font-family: inherit;
+    min-width: 140px;
+    transition: border-color 0.15s;
+  }
+  .tool-item .tool-controls input[type="date"]:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .dur-badge {
     font-size: 10px;
     font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 10px;
+    padding: 3px 10px;
+    border-radius: 8px;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 62px;
+    justify-content: center;
   }
-  .expiry-ok { background: #f0fdf4; color: #15803d; }
-  .expiry-warn { background: #fffbeb; color: #b45309; }
-  .expired { background: #fef2f2; color: #dc2626; }
+  .dur-green { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+  .dur-orange { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .dur-red { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+  .dur-blue { background: #eef2ff; color: #4f46e5; border: 1px solid #e0e7ff; }
+
+  .dur-bar-wrap {
+    width: 60px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .dur-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  .card-footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 0 0;
+    margin-top: 4px;
+    border-top: 1px solid #f1f5f9;
+  }
+  .btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 24px;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+  }
+  .btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(79, 70, 229, 0.35);
+  }
+  .btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-save-outline {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    box-shadow: none;
+    padding: 7px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-save-outline:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+
+  .row-actions-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
   @media (max-width: 768px) {
-    .user-assign-card {
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-    .user-meta {
-      border-right: none;
-      border-bottom: 1px solid var(--slate-100);
-      padding-right: 0;
-      padding-bottom: 12px;
-    }
-    .tool-assign-row {
-      flex-wrap: wrap;
-    }
+    .search-header { padding: 20px; flex-direction: column; align-items: stretch; }
+    .search-header-right input { width: 100%; }
+    .search-header-right { flex-direction: column; }
+    .user-card-header { flex-wrap: wrap; }
+    .user-stats { flex: 1; justify-content: flex-start; margin-top: 8px; }
+    .tool-item { flex-wrap: wrap; }
+    .tool-controls { flex-wrap: wrap; width: 100%; margin-top: 6px; }
+    .user-card-body { padding: 12px 16px; }
   }
 
   .toast {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background-color: white;
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--primary);
-    padding: 12px 18px;
-    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 14px 20px;
     font-size: 13px;
     display: flex;
     align-items: center;
     gap: 12px;
-    max-width: 360px;
+    max-width: 400px;
     z-index: 9999;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
     transform: translateY(100px);
     opacity: 0;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2);
     pointer-events: none;
   }
-  .toast.show {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .toast.success { border-left-color: var(--success); }
-  .toast.error { border-left-color: var(--danger); }
-  .toast.info { border-left-color: var(--primary); }
+  .toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .toast.success { border-left: 4px solid #10b981; }
+  .toast.error { border-left: 4px solid #ef4444; }
+  .toast.info { border-left: 4px solid #4f46e5; }
+  .toast i { font-size: 18px; }
 </style>
 {% endblock %}
 
@@ -153,28 +421,73 @@
   </div>
 </div>
 {% else %}
-<div style="margin-bottom:20px">
-  <p style="font-size:13px;color:var(--slate-500);font-weight:500">
-    <i class="fas fa-magic" style="color:var(--primary);margin-right:6px"></i>
-    <strong>Instant Auto-Save:</strong> Changes save automatically. Check a tool, set its duration — done.
-  </p>
+
+<div class="search-header">
+  <div class="search-header-left">
+    <i class="fas fa-check-double"></i>
+    <div>
+      <h2>Access Assignment</h2>
+      <p>Assign tool access to users with flexible duration control</p>
+    </div>
+  </div>
+  <div class="search-header-right" style="position:relative">
+    <i class="fas fa-search search-icon"></i>
+    <input id="userSearch" placeholder="Search users..." oninput="filterUsers()">
+    <button class="btn-save-outline" onclick="document.querySelectorAll('.card-collapse').forEach(e=>e.classList.toggle('open'))">
+      <i class="fas fa-chevron-down"></i> Toggle All
+    </button>
+  </div>
 </div>
 
-<div>
+<div id="userList">
   {% for user in users %}
   {% set now = now_utc() %}
-  <form method="POST" action="/admin/assign/update" data-username="{{ user.username }}">
+  {% set active_count = namespace(n=0) %}
+  {% set expired_count = namespace(n=0) %}
+  {% for tool in tools %}
+    {% set expiry = tool_expiry.get(user.id, {}).get(tool.id) %}
+    {% if tool.id in assignments.get(user.id, []) %}
+      {% if expiry and expiry < now %}
+        {% set expired_count.n = expired_count.n + 1 %}
+      {% else %}
+        {% set active_count.n = active_count.n + 1 %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+  <form method="POST" action="/admin/assign/update" data-username="{{ user.username }}" class="user-card" data-user-id="{{ user.id }}">
     <input type="hidden" name="user_id" value="{{ user.id }}">
-    <div class="user-assign-card">
-      <div class="user-meta">
-        <div class="user-meta-name">
-          <i class="fas fa-user" style="color:var(--primary);font-size:13px"></i>
-          <span>{{ user.username }}</span>
+    <div class="user-card-header" onclick="toggleCollapse(this)">
+      <div class="user-avatar">{{ user.username[:2].upper() }}</div>
+      <div class="user-card-header-info">
+        <div class="name">
+          {{ user.username }}
+          <small>ID #{{ user.id }}</small>
         </div>
-        <div class="user-meta-id">User ID: #{{ user.id }}</div>
+        <div class="meta">
+          <span><i class="far fa-calendar-alt"></i> Created {{ user.created_at.strftime('%b %d, %Y') }}</span>
+          <span><i class="fas fa-key"></i> {{ active_count.n + expired_count.n }} assigned</span>
+        </div>
       </div>
-      
-      <div class="tools-list">
+      <div class="user-stats">
+        <div class="user-stat">
+          <div class="num blue">{{ active_count.n + expired_count.n }}</div>
+          <div class="lbl">Assigned</div>
+        </div>
+        <div class="user-stat">
+          <div class="num green">{{ active_count.n }}</div>
+          <div class="lbl">Active</div>
+        </div>
+        {% if expired_count.n > 0 %}
+        <div class="user-stat">
+          <div class="num red">{{ expired_count.n }}</div>
+          <div class="lbl">Expired</div>
+        </div>
+        {% endif %}
+        <i class="fas fa-chevron-down" style="color:#94a3b8;font-size:12px;transition:transform 0.2s"></i>
+      </div>
+    </div>
+    <div class="card-collapse">
+      <div class="user-card-body">
         {% for tool in tools %}
         {% set checked = tool.id in assignments.get(user.id, []) %}
         {% set expiry = tool_expiry.get(user.id, {}).get(tool.id) %}
@@ -184,25 +497,62 @@
           {% set days_left = (expiry - now).days %}
           {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
         {% endif %}
-        <div class="tool-assign-row" style="{{ 'opacity:0.5' if is_expired else '' }}">
-          <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
-            {{ 'checked' if checked else '' }}
-            onchange="saveForm(this)"
-            {{ 'disabled' if is_expired else '' }}>
-          <span class="tool-name">{{ tool.name }}</span>
-          <select name="dur_{{ tool.id }}" onchange="saveForm(this)" {{ 'disabled' if is_expired else '' }}>
-            <option value="">No expiry</option>
-            <option value="week" {{ 'selected' if dur == 'week' else '' }}>1 Week</option>
-            <option value="month" {{ 'selected' if dur == 'month' else '' }}>1 Month</option>
-            <option value="year" {{ 'selected' if dur == 'year' else '' }}>1 Year</option>
-          </select>
-          {% if expiry %}
-          <span class="expiry-tag {{ 'expired' if is_expired else ('expiry-warn' if days_left <= 7 else 'expiry-ok') }}">
-            {% if is_expired %}Expired {{ expiry.strftime('%b %d') }}{% else %}{{ days_left }}d{% endif %}
-          </span>
-          {% endif %}
+        {% set cat_slug = tool.category.lower().replace(' ', '-') %}
+        <div class="tool-item {{ 'expired' if is_expired else '' }}" data-tool-id="{{ tool.id }}">
+          <div class="cb-wrap">
+            <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
+              {{ 'checked' if checked else '' }}
+              {{ 'disabled' if is_expired else '' }}>
+          </div>
+          <div class="tool-info">
+            <div class="ti-name">
+              {{ tool.name }}
+              <span class="cat-tag" style="background:{% if 'stream' in cat_slug %}#fffbeb;color:#b45309{% elif 'ai' in cat_slug %}#ecfeff;color:#0f766e{% elif 'design' in cat_slug %}#fdf2f8;color:#be185d{% elif 'learn' in cat_slug %}#f0fdf4;color:#15803d{% else %}#f1f5f9;color:#475569{% endif %}">
+                {{ tool.category }}
+              </span>
+            </div>
+          </div>
+          <div class="tool-controls">
+            <select name="dur_{{ tool.id }}" class="dur-select" onchange="onDurChange(this)" {{ 'disabled' if is_expired else '' }}>
+              <option value="">No expiry</option>
+              <option value="week" {{ 'selected' if dur == 'week' else '' }}>1 Week</option>
+              <option value="month" {{ 'selected' if dur == 'month' else '' }}>1 Month</option>
+              <option value="year" {{ 'selected' if dur == 'year' else '' }}>1 Year</option>
+              <option value="custom" {{ 'selected' if dur == 'custom' else '' }}>Custom</option>
+            </select>
+            <input type="date" name="custom_date_{{ tool.id }}"
+                   class="custom-date-input" style="display:none"
+                   value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
+            {% if checked and expiry %}
+              {% set remaining = (expiry - now).days if expiry > now else 0 %}
+              {% if is_expired %}
+                <span class="dur-badge dur-red"><i class="fas fa-clock"></i> Expired</span>
+              {% elif remaining <= 7 %}
+                <span class="dur-badge dur-orange"><i class="fas fa-clock"></i> {{ remaining }}d left</span>
+              {% else %}
+                <span class="dur-badge dur-green"><i class="fas fa-check-circle"></i> {{ remaining }}d</span>
+              {% endif %}
+              <div class="dur-bar-wrap" title="{{ expiry.strftime('%b %d, %Y') }}">
+                {% if not is_expired %}
+                  {% set max_d = 365 %}
+                  {% set pct = (remaining / max_d * 100)|round|int if remaining < max_d else 100 %}
+                  <div class="dur-bar-fill" style="width:{{ pct }}%;background:{% if remaining <= 7 %}#f59e0b{% else %}#10b981{% endif %}"></div>
+                {% else %}
+                  <div class="dur-bar-fill" style="width:0%"></div>
+                {% endif %}
+              </div>
+              <span style="font-size:10px;color:#94a3b8;white-space:nowrap">{{ expiry.strftime('%b %d') }}</span>
+            {% elif checked %}
+              <span class="dur-badge dur-blue">Unlimited</span>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
+        <div class="card-footer-actions">
+          <button type="submit" class="btn-save save-user-btn" data-username="{{ user.username }}">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+        </div>
       </div>
     </div>
   </form>
@@ -225,25 +575,74 @@
     var text = document.getElementById('toastText');
     t.className = 'toast show ' + (type || 'info');
     text.innerHTML = msg;
-    if (type === 'success') { icon.className = 'fas fa-check-circle'; icon.style.color = 'var(--success)'; }
-    else if (type === 'error') { icon.className = 'fas fa-exclamation-circle'; icon.style.color = 'var(--danger)'; }
-    else { icon.className = 'fas fa-spinner fa-spin'; icon.style.color = 'var(--primary)'; }
+    if (type === 'success') { icon.className = 'fas fa-check-circle'; icon.style.color = '#10b981'; }
+    else if (type === 'error') { icon.className = 'fas fa-exclamation-circle'; icon.style.color = '#ef4444'; }
+    else { icon.className = 'fas fa-spinner fa-spin'; icon.style.color = '#4f46e5'; }
     clearTimeout(toastTimer);
     if (type !== 'info') toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3500);
   }
 
-  function saveForm(el) {
-    var form = el.closest('form');
-    var fd = new FormData(form);
-    var username = form.getAttribute('data-username');
-    showToast('Saving for <strong>' + username + '</strong>...', 'info');
-    fetch('/admin/assign/update?ajax=1', { method: 'POST', body: fd })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (d.ok) showToast('Saved for <strong>' + username + '</strong>!', 'success');
-        else showToast(d.msg || 'Save failed.', 'error');
-      })
-      .catch(function(e){ showToast('Error: ' + e.message, 'error'); });
+  function toggleCollapse(header) {
+    var collapse = header.parentElement.querySelector('.card-collapse');
+    var chevron = header.querySelector('.fa-chevron-down');
+    collapse.classList.toggle('open');
+    if (chevron) chevron.style.transform = collapse.classList.contains('open') ? 'rotate(180deg)' : '';
   }
+
+  function onDurChange(el) {
+    var dateInput = el.parentElement.querySelector('.custom-date-input');
+    if (el.value === 'custom') {
+      dateInput.style.display = 'inline-block';
+    } else {
+      dateInput.style.display = 'none';
+    }
+  }
+
+  function filterUsers() {
+    var q = document.getElementById('userSearch').value.toLowerCase();
+    document.querySelectorAll('.user-card').forEach(function(card) {
+      var name = card.getAttribute('data-username');
+      card.style.display = name && name.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dur-select').forEach(function(sel) {
+      if (sel.value === 'custom') {
+        var dateInput = sel.parentElement.querySelector('.custom-date-input');
+        if (dateInput) dateInput.style.display = 'inline-block';
+      }
+    });
+
+    document.querySelectorAll('.user-card').forEach(function(card) {
+      var collapse = card.querySelector('.card-collapse');
+      collapse.classList.add('open');
+    });
+
+    document.querySelectorAll('form[action="/admin/assign/update"]').forEach(function(form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var username = form.getAttribute('data-username');
+        var btn = form.querySelector('.save-user-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        showToast('Saving for <strong>' + username + '</strong>...', 'info');
+        var fd = new FormData(form);
+        fetch('/admin/assign/update?ajax=1', { method: 'POST', body: fd })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+            if (d.ok) showToast('Saved for <strong>' + username + '</strong>!', 'success');
+            else showToast(d.msg || 'Save failed.', 'error');
+          })
+          .catch(function(e){
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+            showToast('Error: ' + e.message, 'error');
+          });
+      });
+    });
+  });
 </script>
 {% endblock %}

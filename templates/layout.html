@@ -890,10 +890,26 @@
         <a href="/admin/users" class="sidebar-item {% if request.path.startswith('/admin/users') %}active{% endif %}">
           <i class="fas fa-users"></i><span>Users</span>
         </a>
+        <a href="/admin/retailers" class="sidebar-item {% if request.path == '/admin/retailers' %}active{% endif %}">
+          <i class="fas fa-store"></i><span>Retailers</span>
+        </a>
         <a href="/admin/assign" class="sidebar-item {% if request.path == '/admin/assign' %}active{% endif %}">
           <i class="fas fa-check-double"></i><span>Assign Access</span>
         </a>
         <a href="/admin/stats" class="sidebar-item {% if request.path == '/admin/stats' %}active{% endif %}">
+          <i class="fas fa-history"></i><span>Usage Logs</span>
+        </a>
+      {% elif session.get('role') == 'retailer' %}
+        <a href="/retailer" class="sidebar-item {% if request.path == '/retailer' %}active{% endif %}">
+          <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+        </a>
+        <a href="/retailer/users" class="sidebar-item {% if request.path.startswith('/retailer/users') %}active{% endif %}">
+          <i class="fas fa-users"></i><span>My Users</span>
+        </a>
+        <a href="/retailer/assign" class="sidebar-item {% if request.path == '/retailer/assign' %}active{% endif %}">
+          <i class="fas fa-check-double"></i><span>Assign Access</span>
+        </a>
+        <a href="/retailer/stats" class="sidebar-item {% if request.path == '/retailer/stats' %}active{% endif %}">
           <i class="fas fa-history"></i><span>Usage Logs</span>
         </a>
       {% else %}

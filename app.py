@@ -91,6 +91,18 @@ def admin_required(f):
     return inner
 
 
+def retailer_required(f):
+    @wraps(f)
+    def inner(*a, **kw):
+        if 'uid' not in session:
+            return redirect(url_for('login'))
+        if session.get('role') not in ('retailer', 'admin'):
+            flash('Retailer access only.', 'error')
+            return redirect(url_for('user_dashboard'))
+        return f(*a, **kw)
+    return inner
+
+
 # ── Health check ──────────────────────────────────────────────────────
 @app.route('/health')
 def health():
@@ -104,6 +116,8 @@ def home():
         return redirect(url_for('login'))
     if session['role'] == 'admin':
         return redirect(url_for('admin_dashboard'))
+    if session['role'] == 'retailer':
+        return redirect(url_for('retailer_dashboard'))
     return redirect(url_for('user_dashboard'))
 
 
@@ -358,6 +372,15 @@ def admin_assign_update():
             expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
         elif dur == 'year':
             expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=365)
+        elif dur == 'custom':
+            custom_date = request.form.get(f'custom_date_{tid}', '').strip()
+            if custom_date:
+                try:
+                    expires_at = datetime.fromisoformat(custom_date)
+                    if expires_at.tzinfo:
+                        expires_at = expires_at.replace(tzinfo=None)
+                except ValueError:
+                    pass
         db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
     db.session.commit()
 
@@ -366,6 +389,235 @@ def admin_assign_update():
         return jsonify({'ok': True, 'msg': f'Tools updated for "{user.username}".'})
     flash(f'Tools updated for "{user.username}".', 'success')
     return redirect(url_for('admin_assign'))
+
+
+# ═══════════════════════════════════════════════════════════
+# RETAILER – Dashboard, Users, Assign
+# ═══════════════════════════════════════════════════════════
+@app.route('/retailer')
+@retailer_required
+def retailer_dashboard():
+    uid = session['uid']
+    total_sub_users = User.query.filter_by(created_by=uid, role='user').count()
+    total_assigned = UserTool.query.join(User, UserTool.user_id == User.id).filter(User.created_by == uid).count()
+    total_logs = UsageLog.query.join(User, UsageLog.user_id == User.id).filter(User.created_by == uid).count()
+    recent_logs = (UsageLog.query
+                   .join(User, UsageLog.user_id == User.id)
+                   .filter(User.created_by == uid)
+                   .order_by(UsageLog.opened_at.desc())
+                   .limit(10).all())
+    return render_template('retailer_dashboard.html',
+                           total_sub_users=total_sub_users,
+                           total_assigned=total_assigned,
+                           total_logs=total_logs,
+                           recent_logs=recent_logs)
+
+
+@app.route('/retailer/users')
+@retailer_required
+def retailer_users():
+    users = User.query.filter_by(created_by=session['uid'], role='user').order_by(User.created_at.desc()).all()
+    return render_template('retailer_users.html', users=users)
+
+
+@app.route('/retailer/users/add', methods=['POST'])
+@retailer_required
+def retailer_add_user():
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    if not username or not password:
+        flash('Username and password required.', 'error')
+        return redirect(url_for('retailer_users'))
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'error')
+        return redirect(url_for('retailer_users'))
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = User(username=username, password=hashed, role='user', created_by=session['uid'])
+    db.session.add(user)
+    db.session.commit()
+    flash(f'User "{username}" created.', 'success')
+    return redirect(url_for('retailer_users'))
+
+
+@app.route('/retailer/users/delete/<int:uid>', methods=['POST'])
+@retailer_required
+def retailer_delete_user(uid):
+    user = User.query.get_or_404(uid)
+    if user.created_by != session['uid']:
+        flash('Access denied.', 'error')
+        return redirect(url_for('retailer_users'))
+    UsageLog.query.filter_by(user_id=uid).delete()
+    UserTool.query.filter_by(user_id=uid).delete()
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User "{user.username}" deleted.', 'success')
+    return redirect(url_for('retailer_users'))
+
+
+@app.route('/retailer/users/toggle/<int:uid>', methods=['POST'])
+@retailer_required
+def retailer_toggle_user(uid):
+    user = User.query.get_or_404(uid)
+    if user.created_by != session['uid']:
+        return jsonify({'ok': False, 'msg': 'Access denied.'})
+    user.is_active = not user.is_active
+    db.session.commit()
+    return jsonify({'ok': True, 'active': user.is_active})
+
+
+@app.route('/retailer/users/reset-password/<int:uid>', methods=['POST'])
+@retailer_required
+def retailer_reset_password(uid):
+    user = User.query.get_or_404(uid)
+    if user.created_by != session['uid']:
+        flash('Access denied.', 'error')
+        return redirect(url_for('retailer_users'))
+    new_pass = request.form.get('new_password', '').strip()
+    if not new_pass:
+        flash('Password cannot be empty.', 'error')
+        return redirect(url_for('retailer_users'))
+    user.password = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+    db.session.commit()
+    flash(f'Password reset for "{user.username}".', 'success')
+    return redirect(url_for('retailer_users'))
+
+
+@app.route('/retailer/assign')
+@retailer_required
+def retailer_assign():
+    users = User.query.filter_by(created_by=session['uid'], role='user').all()
+    tools = Tool.query.filter_by(is_active=True).all()
+    assignments = {}
+    tool_expiry = {}
+    for ut in UserTool.query.join(User, UserTool.user_id == User.id).filter(User.created_by == session['uid']).all():
+        assignments.setdefault(ut.user_id, set()).add(ut.tool_id)
+        if ut.expires_at:
+            tool_expiry.setdefault(ut.user_id, {})[ut.tool_id] = ut.expires_at
+    return render_template('retailer_assign.html',
+                           users=users, tools=tools,
+                           assignments=assignments,
+                           tool_expiry=tool_expiry)
+
+
+@app.route('/retailer/assign/update', methods=['POST'])
+@retailer_required
+def retailer_assign_update():
+    user_id  = int(request.form.get('user_id'))
+    user = User.query.get_or_404(user_id)
+    if user.created_by != session['uid']:
+        return jsonify({'ok': False, 'msg': 'Access denied.'})
+
+    tool_ids = set(int(x) for x in request.form.getlist('tool_ids'))
+    UserTool.query.filter_by(user_id=user_id).delete()
+    for tid in tool_ids:
+        dur = request.form.get(f'dur_{tid}', '')
+        expires_at = None
+        if dur == 'week':
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(weeks=1)
+        elif dur == 'month':
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
+        elif dur == 'year':
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=365)
+        elif dur == 'custom':
+            custom_date = request.form.get(f'custom_date_{tid}', '').strip()
+            if custom_date:
+                try:
+                    expires_at = datetime.fromisoformat(custom_date)
+                    if expires_at.tzinfo:
+                        expires_at = expires_at.replace(tzinfo=None)
+                except ValueError:
+                    pass
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
+    db.session.commit()
+
+    if request.args.get('ajax') == '1':
+        return jsonify({'ok': True, 'msg': f'Tools updated for "{user.username}".'})
+    flash(f'Tools updated for "{user.username}".', 'success')
+    return redirect(url_for('retailer_assign'))
+
+
+@app.route('/retailer/stats')
+@retailer_required
+def retailer_stats():
+    rows = (db.session.query(
+                UsageLog.user_id, User.username,
+                UsageLog.tool_id, Tool.name,
+                func.count(UsageLog.id).label('count')
+            )
+            .join(User, UsageLog.user_id == User.id)
+            .join(Tool, UsageLog.tool_id == Tool.id)
+            .filter(User.created_by == session['uid'])
+            .group_by(UsageLog.user_id, UsageLog.tool_id, User.username, Tool.name)
+            .order_by(func.count(UsageLog.id).desc())
+            .all())
+    return render_template('retailer_stats.html', rows=rows)
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN – Manage Retailers
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/retailers')
+@admin_required
+def admin_retailers():
+    retailers = User.query.filter_by(role='retailer').order_by(User.created_at.desc()).all()
+    return render_template('admin_retailers.html', retailers=retailers)
+
+
+@app.route('/admin/retailers/add', methods=['POST'])
+@admin_required
+def admin_add_retailer():
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    if not username or not password:
+        flash('Username and password required.', 'error')
+        return redirect(url_for('admin_retailers'))
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'error')
+        return redirect(url_for('admin_retailers'))
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = User(username=username, password=hashed, role='retailer')
+    db.session.add(user)
+    db.session.commit()
+    flash(f'Retailer "{username}" created.', 'success')
+    return redirect(url_for('admin_retailers'))
+
+
+@app.route('/admin/retailers/delete/<int:uid>', methods=['POST'])
+@admin_required
+def admin_delete_retailer(uid):
+    user = User.query.get_or_404(uid)
+    # Delete all sub-users created by this retailer
+    for sub in User.query.filter_by(created_by=uid).all():
+        UsageLog.query.filter_by(user_id=sub.id).delete()
+        UserTool.query.filter_by(user_id=sub.id).delete()
+        db.session.delete(sub)
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Retailer "{user.username}" and their users deleted.', 'success')
+    return redirect(url_for('admin_retailers'))
+
+
+@app.route('/admin/retailers/toggle/<int:uid>', methods=['POST'])
+@admin_required
+def admin_toggle_retailer(uid):
+    user = User.query.get_or_404(uid)
+    user.is_active = not user.is_active
+    db.session.commit()
+    return jsonify({'ok': True, 'active': user.is_active})
+
+
+@app.route('/admin/retailers/reset-password/<int:uid>', methods=['POST'])
+@admin_required
+def admin_reset_retailer_password(uid):
+    user = User.query.get_or_404(uid)
+    new_pass = request.form.get('new_password', '').strip()
+    if not new_pass:
+        flash('Password cannot be empty.', 'error')
+        return redirect(url_for('admin_retailers'))
+    user.password = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+    db.session.commit()
+    flash(f'Password reset for "{user.username}".', 'success')
+    return redirect(url_for('admin_retailers'))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -507,8 +759,15 @@ def inject_now():
 @app.context_processor
 def inject_active_sessions():
     if 'uid' in session:
-        if session.get('role') == 'admin':
+        role = session.get('role')
+        if role == 'admin':
             logs = (UsageLog.query
+                    .order_by(UsageLog.opened_at.desc())
+                    .limit(8).all())
+        elif role == 'retailer':
+            logs = (UsageLog.query
+                    .join(User, UsageLog.user_id == User.id)
+                    .filter(User.created_by == session['uid'])
                     .order_by(UsageLog.opened_at.desc())
                     .limit(8).all())
         else:
@@ -537,15 +796,24 @@ def internal_server_error(e):
 # ── Bootstrap DB & seed admin ─────────────────────────────────────────
 def seed():
     db.create_all()
-    # Migrate: add expires_at column if missing
     import sqlalchemy as sa
     insp = sa.inspect(db.engine)
-    cols = [c['name'] for c in insp.get_columns('user_tools')]
-    if 'expires_at' not in cols:
+
+    # Migrate: add expires_at column if missing
+    cols_ut = [c['name'] for c in insp.get_columns('user_tools')]
+    if 'expires_at' not in cols_ut:
         with db.engine.connect() as conn:
             conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN expires_at TIMESTAMP;'))
             conn.commit()
         print('[MIGRATION] Added expires_at to user_tools')
+
+    # Migrate: add created_by column if missing
+    cols_u = [c['name'] for c in insp.get_columns('users')]
+    if 'created_by' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN created_by INTEGER REFERENCES users(id);'))
+            conn.commit()
+        print('[MIGRATION] Added created_by to users')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()

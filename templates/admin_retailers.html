@@ -1,0 +1,186 @@
+{% extends "layout.html" %}
+{% block title %}Manage Retailers - AccountHub{% endblock %}
+{% block page_title %}Retailer Manager{% endblock %}
+
+{% block header_stats %}
+<div class="header-stat">
+  <div class="num">{{ retailers|length }}</div>
+  <div class="label">Total Retailers</div>
+</div>
+<div class="header-stat">
+  <div class="num" style="color:var(--success)">{{ retailers|selectattr('is_active')|list|length }}</div>
+  <div class="label">Active</div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="showCreatePanel()"><i class="fas fa-user-plus"></i> New Retailer</button>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .action-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .action-btn {
+    border: 1px solid var(--border-color);
+    background-color: white;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate-600);
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .action-btn:hover {
+    background-color: var(--slate-100);
+    color: var(--slate-900);
+    border-color: var(--slate-300);
+  }
+  .create-panel-card {
+    border: 1px solid var(--primary);
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.05);
+    background-color: white;
+    margin-bottom: 24px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+</style>
+{% endblock %}
+
+{% block toolbar %}
+<div class="toolbar" style="margin-bottom:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg)">
+  <input class="toolbar-search" id="searchInput" placeholder="Search retailers..." oninput="filterTable()">
+  <span style="color:var(--slate-300)">|</span>
+  <span style="font-size:12px;color:var(--slate-500);font-weight:500"><i class="fas fa-info-circle"></i> Type to filter</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="create-panel-card" id="createPanel" style="display:none">
+  <div class="card-header" style="background-color:var(--slate-50)">
+    <h3><i class="fas fa-user-plus" style="color:var(--primary)"></i> Create New Retailer</h3>
+    <button class="btn-icon" onclick="showCreatePanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/admin/retailers/add">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;align-items:flex-end">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Username</label>
+          <input class="form-control" name="username" placeholder="e.g. retailer_name" required autocomplete="off">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Password</label>
+          <input class="form-control" type="password" name="password" placeholder="Login password" required autocomplete="new-password">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn btn-outline" style="flex:1" onclick="showCreatePanel()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex:1"><i class="fas fa-check"></i> Create</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fas fa-store" style="color:var(--primary)"></i> Registered Retailers</h3>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrap" style="border:none;border-radius:0">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px">ID</th>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Registered Date</th>
+            <th style="width:160px;text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in retailers %}
+          <tr class="retailer-row">
+            <td style="color:var(--slate-400);font-weight:500">#{{ r.id }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar-sm" style="width:24px;height:24px;border-radius:50%;background-color:var(--slate-100);color:var(--slate-600);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">
+                  {{ r.username[:2].upper() }}
+                </div>
+                <strong style="color:var(--slate-900)">{{ r.username }}</strong>
+              </div>
+            </td>
+            <td>
+              <span class="badge {{ 'badge-on' if r.is_active else 'badge-off' }}" id="rbadge-{{ r.id }}">
+                <i class="fas fa-{{ 'check-circle' if r.is_active else 'times-circle' }}"></i>
+                {{ 'Active' if r.is_active else 'Blocked' }}
+              </span>
+            </td>
+            <td style="color:var(--slate-500)">
+              <i class="far fa-calendar-alt" style="margin-right:6px;color:var(--slate-400)"></i>
+              {{ r.created_at.strftime('%Y-%m-%d') }}
+            </td>
+            <td align="right">
+              <div class="action-btn-group" style="justify-content:flex-end">
+                <button class="action-btn" onclick="toggleRetailer({{ r.id }})" title="Toggle Active Status">
+                  <i class="fas fa-ban"></i>
+                </button>
+                <form method="POST" action="/admin/retailers/delete/{{ r.id }}" style="display:inline" onsubmit="return confirm('Delete retailer {{ r.username }} and all their users?')">
+                  <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete Retailer"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">
+              <i class="fas fa-store"></i>
+              <h3>No retailers registered</h3>
+              <p>Click "New Retailer" to create a retailer account.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showCreatePanel() {
+    const p = document.getElementById('createPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if(p.style.display === 'block') {
+      p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function toggleRetailer(id) {
+    fetch('/admin/retailers/toggle/' + id, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(r => r.json())
+      .then(d => {
+        const b = document.getElementById('rbadge-' + id);
+        b.className = 'badge ' + (d.active ? 'badge-on' : 'badge-off');
+        b.innerHTML = '<i class="fas fa-' + (d.active ? 'check-circle' : 'times-circle') + '"></i> ' + (d.active ? 'Active' : 'Blocked');
+      });
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.retailer-row').forEach(function(r) {
+      r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}
