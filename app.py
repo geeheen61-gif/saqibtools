@@ -6,7 +6,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (Flask, render_template, request,
-                   redirect, url_for, session, jsonify, flash)
+                   redirect, url_for, session, jsonify, flash, Response)
 
 from database import db, User, Tool, UserTool, UsageLog, LaunchToken
 from browser  import open_tool
@@ -75,7 +75,12 @@ def login_required(f):
     def inner(*a, **kw):
         if 'uid' not in session:
             return redirect(url_for('login'))
-        return f(*a, **kw)
+        resp = f(*a, **kw)
+        if isinstance(resp, Response):
+            resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+        return resp
     return inner
 
 
@@ -87,7 +92,12 @@ def admin_required(f):
         if session.get('role') != 'admin':
             flash('Admin access only.', 'error')
             return redirect(url_for('user_dashboard'))
-        return f(*a, **kw)
+        resp = f(*a, **kw)
+        if isinstance(resp, Response):
+            resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+        return resp
     return inner
 
 
@@ -99,7 +109,12 @@ def retailer_required(f):
         if session.get('role') not in ('retailer', 'admin'):
             flash('Retailer access only.', 'error')
             return redirect(url_for('user_dashboard'))
-        return f(*a, **kw)
+        resp = f(*a, **kw)
+        if isinstance(resp, Response):
+            resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+        return resp
     return inner
 
 

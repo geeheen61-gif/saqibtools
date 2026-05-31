@@ -240,7 +240,7 @@
       });
   }
 
-  var toolGrid = document.querySelector('.tool-grid');
+  var toolGrid = document.querySelector('.tool-grid') || document.querySelector('.card-grid');
   if (toolGrid) {
     toolGrid.addEventListener('click', function(e) {
       var btn = e.target.closest('.launch-btn');
