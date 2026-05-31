@@ -119,13 +119,12 @@ def main():
                 ignore_default_args=['--enable-automation'],
                 no_viewport=True,
             )
-            # Anti-theft protections
+            # Anti-theft protections (NOTA: document.cookie is NOT blocked — the target site's JS needs to read it for auth)
             context.add_init_script("""
                 document.addEventListener('contextmenu',function(e){e.preventDefault()});
                 document.addEventListener('keydown',function(e){
                     if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(e.key))||(e.ctrlKey&&['U','S'].includes(e.key))){e.preventDefault();return false}
                 });
-                Object.defineProperty(document,'cookie',{get:function(){return ''},configurable:false,set:function(){return true}});
                 ['log','warn','error','info','debug'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
             """)
 

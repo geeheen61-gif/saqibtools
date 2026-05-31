@@ -278,7 +278,14 @@ def _open_tool(token, server):
                 if root:
                     try: page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30000)
                     except: pass
-                context.add_cookies(cookies)
+                n_requested = len(cookies)
+                try:
+                    context.add_cookies(cookies)
+                    n_injected = len(context.cookies())
+                    if n_injected != n_requested:
+                        log_error(f'Cookie count mismatch: {n_injected} of {n_requested} injected')
+                except Exception as e:
+                    log_error(f'add_cookies failed ({n_requested} cookies): {e}')
                 page.goto(url, wait_until='domcontentloaded', timeout=60000)
                 page.wait_for_event('close', timeout=0)
                 context.close()
