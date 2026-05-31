@@ -14,7 +14,7 @@ BUILD_DIR  = os.path.join(tempfile.gettempdir(), "st_portable_build")
 OUTPUT_ZIP = os.path.join(os.path.dirname(__file__), "saqib_tools_portable.zip")
 
 # ─── STEP 1: Ensure Playwright + Chromium are installed ────────────────
-print("[1/5] Installing Playwright + Chromium (if needed)...")
+print("[1/5] Installing Playwright + Chromium (if needed)...") 
 try:
     import playwright
 except ImportError:
