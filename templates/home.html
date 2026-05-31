@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saqib Tools | Subscription Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface-light: #1f2937;
+      --surface-soft: rgba(255,255,255,0.08);
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --accent: #06b6d4;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --radius: 22px;
+      --shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+      --shadow-soft: 0 20px 60px rgba(15, 23, 42, 0.25);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: 'Inter', sans-serif; background: radial-gradient(circle at top left, rgba(79,70,229,0.3), transparent 32%), radial-gradient(circle at bottom right, rgba(6,182,212,0.2), transparent 28%), var(--bg); color: var(--text); }
+    a { color: inherit; text-decoration: none; }
+    .page { display: flex; flex-direction: column; min-height: 100vh; }
+    .nav { width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: -0.02em; font-size: 22px; }
+    .brand-icon { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; border-radius: 999px; border: 1px solid transparent; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 12px 18px; box-shadow: 0 18px 40px rgba(79,70,229,0.2); }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); padding: 12px 18px; border-color: rgba(255,255,255,0.15); }
+    .hero { width: 100%; max-width: 1180px; margin: 0 auto; padding: 20px 28px 36px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; align-items: center; }
+    .hero-copy { max-width: 620px; }
+    .eyebrow { display:inline-flex; align-items:center; gap:10px; padding:10px 16px; border-radius:999px; background: rgba(99,102,241,0.12); color: #c7d2fe; font-size: 12px; margin-bottom: 22px; }
+    .eyebrow i { color: #a5b4fc; }
+    .headline { font-size: clamp(3rem, 4.5vw, 5.2rem); line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 22px; }
+    .headline span { color: var(--accent); }
+    .tagline { font-size: 1rem; line-height: 1.8; color: var(--muted); max-width: 520px; margin-bottom: 28px; }
+    .hero-buttons { display: flex; flex-wrap: wrap; gap: 14px; }
+    .hero-visual { position: relative; min-height: 420px; border-radius: 30px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow-soft); }
+    .hero-visual::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 35%); }
+    .hero-visual .feature-panel { position: absolute; bottom: 24px; right: 24px; width: min(420px, calc(100% - 48px)); background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 22px; backdrop-filter: blur(18px); }
+    .feature-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .feature-row:last-child { margin-bottom: 0; }
+    .feature-badge { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; color: white; background: linear-gradient(135deg, var(--primary), var(--accent)); font-size: 18px; }
+    .feature-copy { display: flex; flex-direction: column; gap: 4px; }
+    .feature-copy strong { color: white; font-size: 14px; }
+    .feature-copy span { color: var(--muted); font-size: 13px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 18px 0; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .metric-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; }
+    .metric-card strong { display: block; font-size: 1.25rem; color: white; margin-bottom: 6px; }
+    .metric-card span { color: var(--muted); font-size: 0.95rem; }
+    .section { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 28px 36px; }
+    .section h2 { font-size: 2rem; margin-bottom: 18px; letter-spacing: -0.03em; }
+    .tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .tool-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 24px; box-shadow: var(--shadow-soft); transition: transform 0.25s, border-color 0.25s; }
+    .tool-card:hover { transform: translateY(-4px); border-color: rgba(79,70,229,0.22); }
+    .tool-card h3 { font-size: 1.2rem; margin-bottom: 10px; }
+    .tool-card p { color: var(--muted); line-height: 1.7; margin-bottom: 18px; min-height: 56px; }
+    .tool-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tool-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(99,102,241,0.12); color: #c7d2fe; }
+    .tool-url { color: rgba(255,255,255,0.7); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .tool-actions .btn { flex: 1; min-width: 140px; }
+    .footer { width: 100%; padding: 32px 28px 28px; background: rgba(15,23,42,0.92); border-top: 1px solid rgba(255,255,255,0.08); margin-top: auto; }
+    .footer-inner { width: min(1180px, 100%); margin: 0 auto; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .footer-brand { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
+    .footer-brand strong { font-size: 1.05rem; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    .footer-links a { color: var(--muted); font-size: 0.95rem; }
+    .footer-note { color: rgba(255,255,255,0.55); font-size: 0.9rem; margin-top: 16px; }
+    .highlight { color: var(--accent); }
+    @media (max-width: 960px) { .hero { grid-template-columns: 1fr; gap: 28px; } .hero-visual { min-height: 320px; } .metrics { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .nav { flex-direction: column; align-items: flex-start; gap: 18px; padding: 20px 18px; } .hero, .section { padding: 0 18px 30px; } .footer { padding: 28px 18px 24px; } .footer-inner { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="nav">
+      <a class="brand" href="/">
+        <span class="brand-icon"><i class="fas fa-cubes"></i></span>
+        <span>Saqib Tools</span>
+      </a>
+      <div class="nav-actions">
+        <a class="btn btn-secondary" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a>
+        <a class="btn btn-primary" href="https://wa.me/923156710146?text=Hello%20I%20want%20to%20subscribe%20to%20Saqib%20Tools"><i class="fab fa-whatsapp"></i> Contact WhatsApp</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><i class="fas fa-star"></i> Premium accounts ready for subscription</div>
+        <h1 class="headline">Get instant access to <span>automated premium tools</span> with one WhatsApp message.</h1>
+        <p class="tagline">Browse the latest tool accounts available in our database, review each one in real time, and contact us directly to subscribe. No login required to explore.</p>
+        <div class="hero-buttons">
+          <a class="btn btn-primary" href="https://wa.me/923156710146?text=Hello%20I%20want%20to%20subscribe%20to%20Saqib%20Tools">Subscribe via WhatsApp</a>
+          <a class="btn btn-secondary" href="/login">Login to your account</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="feature-panel">
+          <div class="feature-row">
+            <div class="feature-badge"><i class="fas fa-bolt"></i></div>
+            <div class="feature-copy">
+              <strong>Live Availability</strong>
+              <span>All tools are pulled directly from the database and displayed instantly.</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="feature-row">
+            <div class="feature-badge"><i class="fas fa-lock"></i></div>
+            <div class="feature-copy">
+              <strong>Secure Access</strong>
+              <span>Every subscription is handled through WhatsApp to keep communication simple.</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="metrics">
+            <div class="metric-card"><strong>{{ tools|length }}</strong><span>Tools Available</span></div>
+            <div class="metric-card"><strong>24/7</strong><span>WhatsApp Support</span></div>
+            <div class="metric-card"><strong>Fast</strong><span>Subscription setup</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Available subscription tools</h2>
+      <div class="tool-grid">
+        {% for tool in tools %}
+        <article class="tool-card">
+          <div class="tool-meta">
+            <span class="tool-badge"><i class="fas fa-tag"></i> {{ tool.category or 'General' }}</span>
+            <span class="tool-url">{{ tool.url }}</span>
+          </div>
+          <h3>{{ tool.name }}</h3>
+          <p>{{ tool.description or 'No description available for this tool.' }}</p>
+          <div class="tool-actions">
+            <a class="btn btn-primary" href="https://wa.me/923156710146?text=Hello%20I%20want%20to%20subscribe%20to%20{{ tool.name|replace(' ', '%20') }}">Subscribe</a>
+            <a class="btn btn-secondary" href="{{ tool.url }}" target="_blank" rel="noreferrer"><i class="fas fa-external-link-alt"></i> Preview</a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <strong>Saqib Tools</strong>
+          <span>Premium browser tools delivered via WhatsApp subscription. See available accounts, choose your tool, and contact us to subscribe.</span>
+          <span class="footer-note">WhatsApp: <a href="https://wa.me/923156710146" style="color: var(--accent);">+92 315 6710146</a></span>
+        </div>
+        <div class="footer-links">
+          <a href="/login">Login</a>
+          <a href="https://wa.me/923156710146">WhatsApp Support</a>
+          <a href="mailto:support@example.com">support@example.com</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

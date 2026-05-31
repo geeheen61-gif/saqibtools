@@ -112,13 +112,15 @@ def health():
 # ── Auth routes ───────────────────────────────────────────────────────
 @app.route('/')
 def home():
-    if 'uid' not in session:
-        return redirect(url_for('login'))
-    if session['role'] == 'admin':
-        return redirect(url_for('admin_dashboard'))
-    if session['role'] == 'retailer':
-        return redirect(url_for('retailer_dashboard'))
-    return redirect(url_for('user_dashboard'))
+    if 'uid' in session:
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        if session['role'] == 'retailer':
+            return redirect(url_for('retailer_dashboard'))
+        return redirect(url_for('user_dashboard'))
+
+    tools = Tool.query.filter_by(is_active=True).all()
+    return render_template('home.html', tools=tools)
 
 
 @app.route('/login', methods=['GET', 'POST'])
