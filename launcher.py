@@ -1,5 +1,5 @@
 """
-AccountHub Launcher — standalone script for the user's PC.
+Saqib Tools Launcher — standalone script for the user's PC.
 Usage: python launcher.py --token <token> --server <server_url>
 
 Downloads and runs automatically via launcher.bat served from the domain.

@@ -1,16 +1,11 @@
 services:
   - type: web
-    name: account-hub
-    runtime: image
-    repo: https://github.com/yourusername/account-hub
-    plan: free
-    dockerfilePath: ./Dockerfile
+    name: saqib-tools
+    env: python
+    buildCommand: pip install -r requirements.txt && python -m playwright install chromium
+    startCommand: gunicorn app:app --bind 0.0.0.0:10000
     envVars:
-      - key: NEON_DB_URL
-        sync: false
-      - key: SECRET_KEY
-        sync: false
       - key: RENDER
-        value: "1"
-      - key: APP_ENV
-        value: "production"
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true

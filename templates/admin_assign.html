@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% block title %}Assign Access - AccountHub{% endblock %}
+{% block title %}Assign Access - Saqib Tools{% endblock %}
 {% block page_title %}Access Manager{% endblock %}
 {% block header_badge %}<span class="badge badge-active">{{ users|length }} Users</span>{% endblock %}
 
@@ -258,7 +258,8 @@
     border-color: #4f46e5;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
   }
-  .tool-item .tool-controls input[type="date"] {
+  .tool-item .tool-controls input[type="date"],
+  .tool-item .tool-controls .credit-input {
     padding: 5px 10px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
@@ -269,7 +270,8 @@
     min-width: 140px;
     transition: border-color 0.15s;
   }
-  .tool-item .tool-controls input[type="date"]:focus {
+  .tool-item .tool-controls input[type="date"]:focus,
+  .tool-item .tool-controls .credit-input:focus {
     border-color: #4f46e5;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
   }
@@ -490,6 +492,7 @@
       <div class="user-card-body">
         {% for tool in tools %}
         {% set checked = tool.id in assignments.get(user.id, []) %}
+        {% set assignment = assignment_data.get(user.id, {}).get(tool.id) %}
         {% set expiry = tool_expiry.get(user.id, {}).get(tool.id) %}
         {% set is_expired = expiry and expiry < now %}
         {% set dur = '' %}
@@ -497,6 +500,7 @@
           {% set days_left = (expiry - now).days %}
           {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
         {% endif %}
+        {% set credit_limit = assignment.credit_limit if assignment else None %}
         {% set cat_slug = tool.category.lower().replace(' ', '-') %}
         <div class="tool-item {{ 'expired' if is_expired else '' }}" data-tool-id="{{ tool.id }}">
           <div class="cb-wrap">
@@ -523,6 +527,12 @@
             <input type="date" name="custom_date_{{ tool.id }}"
                    class="custom-date-input" style="display:none"
                    value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
+            <input type="number" name="credit_limit_{{ tool.id }}" min="0"
+                   class="credit-input"
+                   style="width:100px; margin-left:10px"
+                   value="{{ credit_limit if credit_limit is not none else '' }}"
+                   placeholder="Credits/mo"
+                   {{ 'disabled' if is_expired else '' }}>
             {% if checked and expiry %}
               {% set remaining = (expiry - now).days if expiry > now else 0 %}
               {% if is_expired %}

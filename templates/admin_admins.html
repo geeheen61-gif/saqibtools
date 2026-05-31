@@ -1,0 +1,143 @@
+{% extends "layout.html" %}
+{% block title %}Manage Admins - Saqib Tools{% endblock %}
+{% block page_title %}Admin Management{% endblock %}
+
+{% block header_stats %}
+<div class="header-stat">
+  <div class="num">{{ admins|length }}</div>
+  <div class="label">Total Admins</div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="showCreatePanel()"><i class="fas fa-user-shield"></i> New Admin</button>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .action-btn-group { display: flex; align-items: center; gap: 6px; }
+  .action-btn {
+    border: 1px solid var(--border-color); background-color: white; cursor: pointer;
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--slate-600); transition: all 0.15s; text-decoration: none;
+  }
+  .action-btn:hover { background-color: var(--slate-100); color: var(--slate-900); }
+  .create-panel-card {
+    border: 1px solid var(--primary); background: white; margin-bottom: 24px;
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .self-badge {
+    font-size: 10px; background: #eef2ff; color: #4f46e5;
+    padding: 2px 8px; border-radius: 6px; font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-panel-card" id="createPanel" style="display:none">
+  <div class="card-header" style="background-color:var(--slate-50)">
+    <h3><i class="fas fa-user-shield" style="color:var(--primary)"></i> Create New Admin</h3>
+    <button class="btn-icon" onclick="showCreatePanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/admin/admins/add">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;align-items:flex-end">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Username</label>
+          <input class="form-control" name="username" placeholder="e.g. admin2" required autocomplete="off">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Password</label>
+          <input class="form-control" type="password" name="password" placeholder="Strong password" required autocomplete="new-password">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn btn-outline" style="flex:1" onclick="showCreatePanel()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex:1"><i class="fas fa-check"></i> Create</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Administrator Accounts</h3>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrap" style="border:none;border-radius:0">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px">ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th style="width:140px;text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in admins %}
+          <tr>
+            <td style="color:var(--slate-400);font-weight:500">#{{ a.id }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar-sm" style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">
+                  {{ a.username[:2].upper() }}
+                </div>
+                <strong style="color:var(--slate-900)">{{ a.username }}</strong>
+                {% if a.id == session.uid %}<span class="self-badge">You</span>{% endif %}
+              </div>
+            </td>
+            <td><span class="badge badge-active"><i class="fas fa-shield-alt"></i> Admin</span></td>
+            <td style="color:var(--slate-500)">{{ a.created_at.strftime('%Y-%m-%d') }}</td>
+            <td align="right">
+              {% if a.id != session.uid %}
+              <div class="action-btn-group" style="justify-content:flex-end">
+                <form method="POST" action="/admin/admins/reset-password/{{ a.id }}" style="display:inline" onsubmit="return prompt('New password for {{ a.username }}:')" id="pwform-{{ a.id }}">
+                  <input type="hidden" name="new_password" id="pwinput-{{ a.id }}">
+                  <button type="button" class="action-btn" onclick="resetPw({{ a.id }})" title="Reset Password">
+                    <i class="fas fa-key"></i>
+                  </button>
+                </form>
+                <form method="POST" action="/admin/admins/delete/{{ a.id }}" style="display:inline" onsubmit="return confirm('Delete admin {{ a.username }}?')">
+                  <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete Admin"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+              {% else %}
+              <span style="font-size:11px;color:#94a3b8">Cannot modify self</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">
+              <i class="fas fa-shield-alt"></i>
+              <h3>No admins found</h3>
+              <p>Something went wrong — there should always be at least one admin.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showCreatePanel() {
+    const p = document.getElementById('createPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if(p.style.display === 'block') p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function resetPw(id) {
+    var pw = prompt('Enter new password for this admin:');
+    if (pw && pw.trim()) {
+      document.getElementById('pwinput-' + id).value = pw.trim();
+      document.getElementById('pwform-' + id).submit();
+    }
+  }
+</script>
+{% endblock %}

@@ -1,22 +1,22 @@
 {% extends "layout.html" %}
-{% block title %}My Tools - AccountHub{% endblock %}
+{% block title %}My Tools - Saqib Tools{% endblock %}
 {% block page_title %}My Tools{% endblock %}
 {% set active_count = namespace(n=0) %}
 {% for t in tools %}{% set expiry = tool_expiry.get(t.id) %}{% if not expiry or expiry > now %}{% set active_count.n = active_count.n + 1 %}{% endif %}{% endfor %}
 {% block header_badge %}<span class="badge badge-active">{{ active_count.n }} available</span>{% endblock %}
 
-{% block header_stats %}
-<div class="header-stat">
-  <div class="num">{{ active_count.n }}</div>
-  <div class="label">Active</div>
-</div>
-{% if tools|length > active_count.n %}
-<div class="header-stat" style="opacity:0.5">
-  <div class="num">{{ tools|length - active_count.n }}</div>
-  <div class="label">Expired</div>
-</div>
-{% endif %}
-{% endblock %}
+    {% block header_stats %}
+    <div class="header-stat">
+      <div class="num">{{ active_count.n }}</div>
+      <div class="label">Active</div>
+    </div>
+    {% if tools|length > active_count.n %}
+    <div class="header-stat" style="opacity:0.5">
+      <div class="num">{{ tools|length - active_count.n }}</div>
+      <div class="label">Expired</div>
+    </div>
+    {% endif %}
+    {% endblock %}
 
 {% block styles %}
 <style>
@@ -146,6 +146,16 @@
       <i class="fas fa-link"></i>
       <span>{{ tool.url }}</span>
     </div>
+    {% set assignment = tool_assignments.get(tool.id) %}
+    {% if assignment and assignment.credit_limit %}
+    <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--slate-500);">
+      <strong>Credit limit:</strong> {{ assignment.credit_limit }} credits/month
+    </div>
+    {% elif current_user.monthly_credit_limit is not none %}
+    <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--slate-500);">
+      <strong>Monthly credit pool:</strong> {{ current_user.monthly_credit_limit }} credits/month
+    </div>
+    {% endif %}
     {% if expiry %}
     <div class="expiry-tag {{ 'expired-tag' if is_expired else ('expiry-warn' if (expiry - now).days <= 7 else 'expiry-ok') }}">
       {% if is_expired %}
@@ -160,7 +170,7 @@
       <i class="fas fa-lock"></i> <span class="btn-text">Subscription Expired</span>
     </button>
     {% else %}
-    <button class="btn btn-primary launch-btn" onclick="useTool({{ tool.id }}, '{{ tool.name }}', this)">
+    <button class="btn btn-primary launch-btn" data-id="{{ tool.id }}" data-name="{{ tool.name|e }}">
       <i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>
     </button>
     {% endif %}
@@ -215,7 +225,9 @@
         }
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-        if (d.mode === 'remote') {
+        if (d.mode === 'mobile') {
+          window.location.href = '/launch/mobile/' + encodeURIComponent(d.token);
+        } else if (d.mode === 'remote') {
           window.location.href = '/launch/' + encodeURIComponent(d.token);
         } else {
           showToast('\u2705 <strong>' + name + '</strong> opened!<br>Check your taskbar.', 'success');
@@ -227,5 +239,14 @@
         showToast('\u274c Error: ' + e.message, 'error');
       });
   }
+
+  document.querySelector('.tool-grid').addEventListener('click', function(e) {
+    var btn = e.target.closest('.launch-btn');
+    if (btn && !btn.disabled) {
+      var id = btn.getAttribute('data-id');
+      var name = btn.getAttribute('data-name');
+      useTool(id, name, btn);
+    }
+  });
 </script>
 {% endblock %}

@@ -286,6 +286,8 @@ def admin_users():
 def admin_add_user():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
+    subscription_days = request.form.get('subscription_days', '30').strip()
+    credit_limit = request.form.get('credit_limit', '100').strip()
 
     if not username or not password:
         flash('Username and password required.', 'error')
@@ -295,11 +297,35 @@ def admin_add_user():
         flash('Username already exists.', 'error')
         return redirect(url_for('admin_users'))
 
+    try:
+        subscription_days = int(subscription_days)
+        credit_limit = int(credit_limit)
+        if subscription_days < 1 or subscription_days > 365:
+            raise ValueError
+        if credit_limit < 0:
+            raise ValueError
+    except ValueError:
+        flash('Invalid subscription days or credit limit.', 'error')
+        return redirect(url_for('admin_users'))
+
+    from datetime import datetime, timezone, timedelta
+    
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    user   = User(username=username, password=hashed, role='user')
+    user = User(
+        username=username,
+        password=hashed,
+        role='user',
+        monthly_credit_limit=credit_limit
+    )
+    
+    # Set subscription expiration
+    if subscription_days > 0:
+        user.subscription_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=subscription_days)
+    # If subscription_days is 0, leave subscription_expires_at as NULL (unlimited)
+    
     db.session.add(user)
     db.session.commit()
-    flash(f'User "{username}" created.', 'success')
+    flash(f'User "{username}" created with {credit_limit} monthly credits.', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -324,6 +350,33 @@ def admin_toggle_user(uid):
     return jsonify({'ok': True, 'active': user.is_active})
 
 
+@app.route('/admin/user/info/<int:uid>')
+@admin_required
+def admin_user_info(uid):
+    user = User.query.get_or_404(uid)
+    # Calculate remaining subscription days if expires_at is set
+    subscription_days = None
+    if user.subscription_expires_at:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if user.subscription_expires_at > now:
+            delta = user.subscription_expires_at - now
+            subscription_days = max(0, delta.days)
+        else:
+            subscription_days = 0  # Expired
+    else:
+        subscription_days = -1  # -1 means unlimited/no expiration
+    
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'subscription_days': subscription_days,
+        'credit_limit': user.monthly_credit_limit,
+        'credits_used': user.credits_used_current_month,
+        'is_active': user.is_active
+    })
+
+
 @app.route('/admin/users/reset-password/<int:uid>', methods=['POST'])
 @admin_required
 def admin_reset_password(uid):
@@ -338,6 +391,43 @@ def admin_reset_password(uid):
     return redirect(url_for('admin_users'))
 
 
+@app.route('/admin/users/edit/<int:uid>', methods=['POST'])
+@admin_required
+def admin_edit_user(uid):
+    user = User.query.get_or_404(uid)
+    subscription_days = request.form.get('subscription_days', '').strip()
+    credit_limit = request.form.get('credit_limit', '').strip()
+
+    if subscription_days:
+        try:
+            subscription_days = int(subscription_days)
+            if subscription_days < 0:
+                raise ValueError
+            # Note: Subscription expiration is handled via UserTool assignments
+            # For now, we'll store a note or this could be extended to add a subscription tool
+            flash(f'Subscription duration updated for "{user.username}".', 'info')
+        except ValueError:
+            flash('Invalid subscription days.', 'error')
+            return redirect(url_for('admin_users'))
+
+    if credit_limit:
+        try:
+            credit_limit = int(credit_limit)
+            if credit_limit < 0:
+                raise ValueError
+            user.monthly_credit_limit = credit_limit
+            # Reset current usage if new limit is lower than current usage
+            if user.credits_used_current_month > credit_limit:
+                user.credits_used_current_month = credit_limit
+        except ValueError:
+            flash('Invalid credit limit.', 'error')
+            return redirect(url_for('admin_users'))
+
+    db.session.commit()
+    flash(f'User "{user.username}" updated.', 'success')
+    return redirect(url_for('admin_users'))
+
+
 # ── Assign tools to users ─────────────────────────────────────────────
 @app.route('/admin/assign')
 @admin_required
@@ -346,14 +436,17 @@ def admin_assign():
     tools = Tool.query.filter_by(is_active=True).all()
     assignments = {}
     tool_expiry = {}
+    assignment_data = {}
     for ut in UserTool.query.all():
         assignments.setdefault(ut.user_id, set()).add(ut.tool_id)
+        assignment_data.setdefault(ut.user_id, {})[ut.tool_id] = ut
         if ut.expires_at:
             tool_expiry.setdefault(ut.user_id, {})[ut.tool_id] = ut.expires_at
     return render_template('admin_assign.html',
                            users=users, tools=tools,
                            assignments=assignments,
-                           tool_expiry=tool_expiry)
+                           tool_expiry=tool_expiry,
+                           assignment_data=assignment_data)
 
 
 @app.route('/admin/assign/update', methods=['POST'])
@@ -381,14 +474,114 @@ def admin_assign_update():
                         expires_at = expires_at.replace(tzinfo=None)
                 except ValueError:
                     pass
-        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
+        credit_limit = request.form.get(f'credit_limit_{tid}', '').strip()
+        credit_limit_value = None
+        if credit_limit:
+            try:
+                credit_limit_value = int(credit_limit)
+                if credit_limit_value < 0:
+                    raise ValueError
+            except ValueError:
+                credit_limit_value = None
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at, credit_limit=credit_limit_value))
     db.session.commit()
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if request.args.get('ajax') == '1':
         return jsonify({'ok': True, 'msg': f'Tools updated for "{user.username}".'})
     flash(f'Tools updated for "{user.username}".', 'success')
     return redirect(url_for('admin_assign'))
+
+
+# ── Profile (change own username/password) ────────────────
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    uid = session['uid']
+    user = User.query.get_or_404(uid)
+    if request.method == 'POST':
+        new_username = request.form.get('username', '').strip()
+        curr_password = request.form.get('current_password', '').encode()
+        new_password = request.form.get('new_password', '').strip()
+
+        if not bcrypt.checkpw(curr_password, user.password.encode()):
+            flash('Current password is incorrect.', 'error')
+            return redirect(url_for('profile'))
+
+        if new_username and new_username != user.username:
+            if User.query.filter_by(username=new_username).first():
+                flash('Username already taken.', 'error')
+                return redirect(url_for('profile'))
+            user.username = new_username
+            session['username'] = new_username
+
+        if new_password:
+            user.password = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('profile'))
+
+    return render_template('admin_profile.html', user=user)
+
+
+# ── Admin Management (create, list, delete admins) ────────────
+@app.route('/admin/admins')
+@admin_required
+def admin_admins():
+    admins = User.query.filter_by(role='admin').order_by(User.created_at.desc()).all()
+    return render_template('admin_admins.html', admins=admins)
+
+
+@app.route('/admin/admins/add', methods=['POST'])
+@admin_required
+def admin_add_admin():
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    if not username or not password:
+        flash('Username and password required.', 'error')
+        return redirect(url_for('admin_admins'))
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'error')
+        return redirect(url_for('admin_admins'))
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = User(username=username, password=hashed, role='admin')
+    db.session.add(user)
+    db.session.commit()
+    flash(f'Admin "{username}" created.', 'success')
+    return redirect(url_for('admin_admins'))
+
+
+@app.route('/admin/admins/delete/<int:uid>', methods=['POST'])
+@admin_required
+def admin_delete_admin(uid):
+    if uid == session['uid']:
+        flash('You cannot delete yourself.', 'error')
+        return redirect(url_for('admin_admins'))
+    user = User.query.get_or_404(uid)
+    if user.role != 'admin':
+        flash('Not an admin account.', 'error')
+        return redirect(url_for('admin_admins'))
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Admin "{user.username}" deleted.', 'success')
+    return redirect(url_for('admin_admins'))
+
+
+@app.route('/admin/admins/reset-password/<int:uid>', methods=['POST'])
+@admin_required
+def admin_reset_admin_password(uid):
+    if uid == session['uid']:
+        return redirect(url_for('admin_profile'))
+    user = User.query.get_or_404(uid)
+    new_pass = request.form.get('new_password', '').strip()
+    if not new_pass:
+        flash('Password cannot be empty.', 'error')
+        return redirect(url_for('admin_admins'))
+    user.password = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+    db.session.commit()
+    flash(f'Password reset for "{user.username}".', 'success')
+    return redirect(url_for('admin_admins'))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -489,14 +682,17 @@ def retailer_assign():
     tools = Tool.query.filter_by(is_active=True).all()
     assignments = {}
     tool_expiry = {}
+    assignment_data = {}
     for ut in UserTool.query.join(User, UserTool.user_id == User.id).filter(User.created_by == session['uid']).all():
         assignments.setdefault(ut.user_id, set()).add(ut.tool_id)
+        assignment_data.setdefault(ut.user_id, {})[ut.tool_id] = ut
         if ut.expires_at:
             tool_expiry.setdefault(ut.user_id, {})[ut.tool_id] = ut.expires_at
     return render_template('retailer_assign.html',
                            users=users, tools=tools,
                            assignments=assignments,
-                           tool_expiry=tool_expiry)
+                           tool_expiry=tool_expiry,
+                           assignment_data=assignment_data)
 
 
 @app.route('/retailer/assign/update', methods=['POST'])
@@ -527,7 +723,16 @@ def retailer_assign_update():
                         expires_at = expires_at.replace(tzinfo=None)
                 except ValueError:
                     pass
-        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
+        credit_limit = request.form.get(f'credit_limit_{tid}', '').strip()
+        credit_limit_value = None
+        if credit_limit:
+            try:
+                credit_limit_value = int(credit_limit)
+                if credit_limit_value < 0:
+                    raise ValueError
+            except ValueError:
+                credit_limit_value = None
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at, credit_limit=credit_limit_value))
     db.session.commit()
 
     if request.args.get('ajax') == '1':
@@ -632,11 +837,22 @@ def user_dashboard():
             .filter(UserTool.user_id == uid, Tool.is_active == True)
             .all())
     tools = [r.tool for r in rows]
+    tool_assignments = {r.tool_id: r for r in rows}
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     tool_expiry = {}
     for r in rows:
         tool_expiry[r.tool_id] = r.expires_at
-    return render_template('user_dashboard.html', tools=tools, tool_expiry=tool_expiry, now=now)
+    return render_template('user_dashboard.html', tools=tools,
+                           tool_expiry=tool_expiry,
+                           tool_assignments=tool_assignments,
+                           now=now)
+
+
+def _is_mobile():
+    ua = request.headers.get('User-Agent', '').lower()
+    keywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'phone', 'tablet',
+                'blackberry', 'opera mini', 'iemobile', 'webos', 'touch']
+    return any(k in ua for k in keywords)
 
 
 @app.route('/use/<int:tid>')
@@ -654,8 +870,38 @@ def use_tool(tid):
     if assignment.expires_at and datetime.now(timezone.utc).replace(tzinfo=None) > assignment.expires_at:
         return jsonify({'ok': False, 'msg': 'Your subscription has expired.'})
 
-    db.session.add(UsageLog(user_id=uid, tool_id=tid))
-    db.session.commit()
+    # Credit and subscription check
+    user = db.session.get(User, uid)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Per-tool credited limits override any generic user monthly credit settings.
+    if assignment.credit_limit and assignment.credit_limit > 0:
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        tool_usage_count = (UsageLog.query
+                            .filter_by(user_id=uid, tool_id=tid)
+                            .filter(UsageLog.opened_at >= month_start)
+                            .count())
+        if tool_usage_count >= assignment.credit_limit:
+            return jsonify({'ok': False, 'msg': 'Tool credit limit reached for this month. Please contact administrator to increase access.'})
+
+    # Check user subscription expiration if set
+    if user.subscription_expires_at and now > user.subscription_expires_at:
+        return jsonify({'ok': False, 'msg': 'Subscription has expired. Please renew to continue using tools.'})
+
+    # Mobile mode: provide cookies for manual import
+    if _is_mobile():
+        token = secrets.token_urlsafe(16)
+        db.session.add(LaunchToken(
+            token=token, url=tool.url, cookies=tool.cookies,
+            username=session['username'], tool_name=tool.name,
+        ))
+        user.credits_used_current_month += 1
+        db.session.add(UsageLog(user_id=uid, tool_id=tid))
+        db.session.commit()
+        return jsonify({
+            'ok': True, 'mode': 'mobile', 'token': token,
+            'msg': 'Opening on your device...',
+        })
 
     on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
     if on_render:
@@ -664,15 +910,20 @@ def use_tool(tid):
             token=token, url=tool.url, cookies=tool.cookies,
             username=session['username'], tool_name=tool.name,
         ))
+        db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({
             'ok': True, 'mode': 'remote', 'token': token,
             'msg': 'Opening Chromium on your PC...',
         })
+
     # Local mode: auto-installs Playwright+Chromium if missing, then opens browser
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
+        db.session.add(UsageLog(user_id=uid, tool_id=tid))
+        db.session.commit()
         return jsonify({'ok': True, 'mode': 'local', 'msg': 'Browser opened on your desktop.'})
+
     return jsonify({'ok': False, 'msg': result.get('error', 'Launch failed.')})
 
 
@@ -698,6 +949,18 @@ def launch_page(token):
                            server_url=request.host_url.rstrip('/'))
 
 
+@app.route('/launch/mobile/<token>')
+def launch_mobile(token):
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
+        return 'Invalid or expired launch token.', 404
+    return render_template('launch_mobile.html',
+                           tool_name=lt.tool_name,
+                           tool_url=lt.url,
+                           cookies=lt.cookies,
+                           token=token)
+
+
 @app.route('/launch-download/<token>')
 def launch_download(token):
     lt = LaunchToken.query.filter_by(token=token).first()
@@ -708,45 +971,24 @@ def launch_download(token):
     tool_name = lt.tool_name
 
     bat_content = f"""@echo off
-title AccountHub Launcher - {tool_name}
-echo =====================================================================
-echo    AccountHub Launcher
-echo =====================================================================
-echo.
-echo  Tool: {tool_name}
-echo  This will install Playwright + Chromium (if needed) and open your
-echo  session in a separate Chromium browser window.
-echo.
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [!] Python not found. Please install Python from:
-    echo     https://www.python.org/downloads/
-    echo     Make sure to check "Add Python to PATH".
+title Saqib Tools - {tool_name}
+cd /d "%~dp0"
+if not exist "launcher.py" (
+    echo.
+    echo  launcher.py not found in this folder.
+    echo  Download the ZIP package first and extract it here.
+    echo  Or visit: {server_url}
     pause
     exit /b 1
 )
-echo [*] Downloading launcher script...
-curl -sL "{server_url}/static/launcher.py" -o "%TEMP%\\account_hub_launcher.py" 2>nul
-if not exist "%TEMP%\\account_hub_launcher.py" (
-    echo [!] Failed to download launcher script.
-    echo     Check your internet connection.
-    pause
-    exit /b 1
-)
-echo [*] Launching...
-python "%TEMP%\\account_hub_launcher.py" --token {token} --server {server_url}
-if %errorlevel% equ 0 (
-    echo.
-    echo [OK] Session launched successfully!
-) else (
-    echo.
-    echo [x] Launch failed. Try running setup_and_run.bat first.
-)
+python launcher.py --token {token} --server {server_url}
+echo.
 pause
 """
     return bat_content, 200, {
-        'Content-Type': 'application/x-bat',
+        'Content-Type': 'application/octet-stream',
         'Content-Disposition': f'attachment; filename="launch_{tool_name.replace(" ", "_")}.bat"',
+        'X-Content-Type-Options': 'nosniff',
     }
 
 
@@ -754,6 +996,14 @@ pause
 @app.context_processor
 def inject_now():
     return {'now_utc': lambda: datetime.now(timezone.utc).replace(tzinfo=None)}
+
+
+@app.context_processor
+def inject_current_user():
+    if 'uid' in session:
+        user = db.session.get(User, session['uid'])
+        return {'current_user': user}
+    return {'current_user': None}
 
 
 @app.context_processor
@@ -799,13 +1049,18 @@ def seed():
     import sqlalchemy as sa
     insp = sa.inspect(db.engine)
 
-    # Migrate: add expires_at column if missing
+    # Migrate: add expires_at and credit_limit columns if missing
     cols_ut = [c['name'] for c in insp.get_columns('user_tools')]
     if 'expires_at' not in cols_ut:
         with db.engine.connect() as conn:
             conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN expires_at TIMESTAMP;'))
             conn.commit()
         print('[MIGRATION] Added expires_at to user_tools')
+    if 'credit_limit' not in cols_ut:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN credit_limit INTEGER;'))
+            conn.commit()
+        print('[MIGRATION] Added credit_limit to user_tools')
 
     # Migrate: add created_by column if missing
     cols_u = [c['name'] for c in insp.get_columns('users')]
@@ -814,6 +1069,30 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN created_by INTEGER REFERENCES users(id);'))
             conn.commit()
         print('[MIGRATION] Added created_by to users')
+
+    if 'subscription_expires_at' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMP;'))
+            conn.commit()
+        print('[MIGRATION] Added subscription_expires_at to users')
+
+    if 'monthly_credit_limit' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN monthly_credit_limit INTEGER DEFAULT 100;'))
+            conn.commit()
+        print('[MIGRATION] Added monthly_credit_limit to users')
+
+    if 'credits_used_current_month' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN credits_used_current_month INTEGER DEFAULT 0;'))
+            conn.commit()
+        print('[MIGRATION] Added credits_used_current_month to users')
+
+    if 'last_credit_reset' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN last_credit_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;'))
+            conn.commit()
+        print('[MIGRATION] Added last_credit_reset to users')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()

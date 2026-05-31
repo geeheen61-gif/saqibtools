@@ -1,94 +1,34 @@
 {% extends "layout.html" %}
-{% block title %}Launch {{ tool_name }} - AccountHub{% endblock %}
+{% block title %}Launch {{ tool_name }} - Saqib Tools{% endblock %}
 {% block page_title %}Launch {{ tool_name }}{% endblock %}
 
 {% block styles %}
 <style>
-  .launch-card {
-    max-width: 560px; margin: 0 auto; text-align: center;
-  }
+  .launch-card { max-width: 560px; margin: 0 auto; text-align: center; }
   .launch-card .card-body { padding: 40px 36px; }
-  .dl-btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: var(--primary); color: #fff; border: none;
-    padding: 16px 36px; border-radius: 12px; font-size: 16px;
-    font-weight: 600; cursor: pointer; text-decoration: none;
-    margin: 20px 0;
-  }
-  .dl-btn:hover { background: var(--primary-dark); }
-  .steps {
-    text-align: left; margin: 24px 0;
-    counter-reset: step;
-  }
-  .step {
-    display: flex; gap: 14px; align-items: flex-start;
-    padding: 14px 0; border-bottom: 1px solid var(--border-color);
-  }
-  .step:last-child { border-bottom: none; }
-  .step-num {
-    width: 28px; height: 28px; min-width: 28px;
-    background: var(--primary-light); color: var(--primary);
-    border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; font-weight: 700; font-size: 13px;
-  }
-  .step-content { font-size: 13px; color: var(--slate-600); line-height: 1.5; }
-  .step-content strong { color: var(--slate-900); }
-  .icon-big { font-size: 48px; color: var(--primary); margin-bottom: 12px; }
+  .icon-big { font-size: 56px; color: var(--primary); margin-bottom: 16px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card launch-card">
   <div class="card-body">
-    <div class="icon-big"><i class="fas fa-download"></i></div>
-    <h2 style="margin:0 0 6px">{{ tool_name }}</h2>
-    <p style="color:var(--slate-500);font-size:14px;margin:0 0 8px">
-      Download and run the launcher to open Chromium on your computer.
+    <div class="icon-big"><i class="fas fa-check-circle"></i></div>
+    <h2 style="margin:0 0 8px">{{ tool_name }}</h2>
+    <p style="color:var(--slate-500);font-size:14px;line-height:1.6">
+      Download the launcher batch file below, then double-click it<br>
+      on your PC to open the tool automatically.
     </p>
-
-    <a class="dl-btn" href="/launch-download/{{ token }}" id="dlLink">
-      <i class="fas fa-file-download"></i> Download Launcher (.bat)
+    <a href="/launch-download/{{ token }}" class="btn btn-primary" style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;font-size:15px;padding:12px 32px">
+      <i class="fas fa-download"></i> Download Launcher
     </a>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-content">
-          <strong>Download the launcher</strong><br>
-          Click the button above to save <code>launch_{{ tool_name.replace(' ', '_') }}.bat</code> to your PC.
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-content">
-          <strong>Run the file</strong><br>
-          Double-click the downloaded <code>.bat</code> file. If Windows SmartScreen appears, click <strong>"More info &rarr; Run anyway"</strong>.
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-content">
-          <strong>Wait for setup</strong><br>
-          The script will install Playwright &amp; Chromium (first time only) and then open your session in a new Chromium window.
-        </div>
-      </div>
-    </div>
-
-    <p style="color:var(--slate-400);font-size:12px;margin-top:20px">
-      <i class="fas fa-shield-alt"></i> Requires Python 3.8+ installed on your PC.
-      <a href="https://www.python.org/downloads/" target="_blank" style="color:var(--primary)">Download Python</a>
+    <p style="font-size:12px;color:var(--slate-400);margin-top:16px">
+      You only need to do this once &mdash; the .bat file will<br>
+      reconnect you to this tool whenever you run it.
     </p>
-
-    <button class="btn btn-outline" onclick="window.location.href='/dashboard'" style="margin-top:8px">
+    <a href="/dashboard" class="btn btn-outline" style="margin-top:16px">
       <i class="fas fa-arrow-left"></i> Back to Dashboard
-    </button>
+    </a>
   </div>
 </div>
-
-<script>
-  // Auto-trigger download after 1s
-  setTimeout(function() {
-    document.getElementById('dlLink').click();
-  }, 1000);
-</script>
 {% endblock %}

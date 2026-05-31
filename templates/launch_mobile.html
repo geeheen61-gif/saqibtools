@@ -1,0 +1,175 @@
+{% extends "layout.html" %}
+{% block title %}Launch {{ tool_name }} - Saqib Tools{% endblock %}
+{% block page_title %}Mobile Access{% endblock %}
+
+{% block styles %}
+<style>
+  .mobile-launch {
+    max-width: 520px; margin: 0 auto;
+  }
+  .ml-header {
+    text-align: center; padding: 24px 0 20px;
+  }
+  .ml-header .icon-big {
+    width: 64px; height: 64px; border-radius: 20px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px; font-size: 28px; color: white;
+    box-shadow: 0 8px 24px rgba(79,70,229,0.25);
+  }
+  .ml-header h2 { font-size: 18px; color: #0f172a; margin-bottom: 4px; }
+  .ml-header p { font-size: 13px; color: #64748b; }
+
+  .ml-section {
+    background: #f8fafc; border-radius: 16px;
+    padding: 18px 20px; margin-bottom: 16px;
+    border: 1px solid #e2e8f0;
+  }
+  .ml-section h3 {
+    font-size: 13px; font-weight: 700; color: #0f172a;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+  .ml-section h3 .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #4f46e5; color: white; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  .url-box {
+    display: flex; align-items: center; gap: 8px;
+    background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 10px 14px; word-break: break-all;
+  }
+  .url-box .url-text {
+    flex: 1; font-size: 13px; color: #0f172a; font-weight: 500;
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .url-box .copy-btn {
+    flex-shrink: 0; background: #eef2ff; border: none; border-radius: 8px;
+    padding: 6px 10px; color: #4f46e5; cursor: pointer; font-size: 12px; font-weight: 600;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .url-box .copy-btn:hover { background: #e0e7ff; }
+
+  .btn-block {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white; border: none; border-radius: 14px;
+    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    text-decoration: none; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(79,70,229,0.25);
+    margin-bottom: 12px;
+  }
+  .btn-block:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,70,229,0.35); }
+  .btn-block:active { transform: scale(0.98); }
+  .btn-block.green { background: linear-gradient(135deg, #10b981, #059669); }
+
+  .cookie-box {
+    background: #0f172a; color: #e2e8f0; border-radius: 12px;
+    padding: 14px; font-family: 'SF Mono', Consolas, monospace;
+    font-size: 11px; line-height: 1.5; max-height: 200px; overflow: auto;
+    white-space: pre-wrap; word-break: break-all;
+    margin-bottom: 10px;
+  }
+  .cookie-actions {
+    display: flex; gap: 8px;
+  }
+  .cookie-actions button, .cookie-actions a {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .btn-copy { background: #eef2ff; color: #4f46e5; border: 1px solid #e0e7ff; }
+  .btn-copy:hover { background: #e0e7ff; }
+  .btn-dl { background: #0f172a; color: white; border: 1px solid #1e293b; }
+  .btn-dl:hover { background: #1e293b; }
+
+  .ext-link { color: #4f46e5; font-weight: 600; text-decoration: none; }
+  .ext-link:hover { text-decoration: underline; }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #64748b; text-decoration: none; margin-top: 8px;
+  }
+  .back-link:hover { color: #0f172a; }
+
+  @media (max-width: 480px) {
+    .ml-header { padding: 16px 0; }
+    .ml-header .icon-big { width: 52px; height: 52px; font-size: 22px; }
+    .ml-section { padding: 14px 16px; }
+    .cookie-box { font-size: 10px; max-height: 150px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mobile-launch">
+  <div class="ml-header">
+    <div class="icon-big"><i class="fas fa-mobile-alt"></i></div>
+    <h2>{{ tool_name }}</h2>
+    <p>Follow the steps below to access this tool on your mobile device</p>
+  </div>
+
+  <div class="ml-section">
+    <h3><span class="step-num">1</span> Open the website</h3>
+    <div class="url-box">
+      <span class="url-text" id="toolUrl">{{ tool_url }}</span>
+      <button class="copy-btn" onclick="copyUrl()"><i class="fas fa-copy"></i> Copy</button>
+    </div>
+    <a href="{{ tool_url }}" target="_blank" class="btn-block" style="margin-top:12px">
+      <i class="fas fa-external-link-alt"></i> Open Website
+    </a>
+  </div>
+
+  <div class="ml-section">
+    <h3><span class="step-num">2</span> Import session cookies</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px">
+      You need a cookie editor extension. We recommend
+      <a href="https://cookie-editor.com" target="_blank" class="ext-link">Cookie Editor</a>
+      (free on Chrome &amp; Firefox).
+    </p>
+    <div class="cookie-box" id="cookieData">{{ cookies }}</div>
+    <div class="cookie-actions">
+      <button class="btn-copy" onclick="copyCookies()"><i class="fas fa-copy"></i> Copy Cookies</button>
+      <a class="btn-dl" href="data:application/json;charset=utf-8,{{ cookies | urlencode }}" download="cookies.json"><i class="fas fa-download"></i> Download</a>
+    </div>
+  </div>
+
+  <div class="ml-section" style="border-color:#dbeafe;background:#f0f4ff">
+    <h3><span class="step-num">3</span> How to import cookies</h3>
+    <ol style="font-size:12px;color:#475569;line-height:1.8;padding-left:16px">
+      <li>Install <strong>Cookie Editor</strong> from Chrome Web Store or Firefox Add-ons</li>
+      <li>Navigate to <strong>{{ tool_url }}</strong> in your browser</li>
+      <li>Open the Cookie Editor extension</li>
+      <li>Click <strong>"Import"</strong> and paste the cookies JSON (or upload the file)</li>
+      <li>Click <strong>"Save"</strong> then <strong>refresh</strong> the page</li>
+      <li>You should now have premium access!</li>
+    </ol>
+  </div>
+
+  <a href="/dashboard" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function copyUrl() {
+    var el = document.getElementById('toolUrl');
+    navigator.clipboard.writeText(el.textContent).then(function() {
+      var btn = el.parentElement.querySelector('.copy-btn');
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
+    });
+  }
+  function copyCookies() {
+    var el = document.getElementById('cookieData');
+    navigator.clipboard.writeText(el.textContent).then(function() {
+      var btn = document.querySelector('.btn-copy');
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy Cookies'; }, 2000);
+    });
+  }
+</script>
+{% endblock %}

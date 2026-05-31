@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block title %}My Profile - Saqib Tools{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block styles %}
+<style>
+  .profile-card {
+    max-width: 520px; margin: 0 auto;
+  }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 20px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 28px; font-weight: 700;
+    margin: 0 auto 16px; box-shadow: 0 8px 24px rgba(79,70,229,0.25);
+  }
+  .profile-role {
+    text-align: center; margin-bottom: 24px;
+  }
+  .profile-role .role-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #eef2ff; color: #4f46e5; border: 1px solid #e0e7ff;
+    padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    text-transform: capitalize;
+  }
+  .profile-role .joined {
+    font-size: 12px; color: #94a3b8; margin-top: 4px;
+  }
+  .form-divider {
+    height: 1px; background: #e2e8f0; margin: 20px 0;
+  }
+  .form-section-title {
+    font-size: 12px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+  }
+  .pw-hint {
+    font-size: 11px; color: #94a3b8; margin-top: 4px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card profile-card">
+  <div class="card-body">
+    <div class="profile-avatar">{{ user.username[:2].upper() }}</div>
+    <div class="profile-role">
+      <span class="role-badge"><i class="fas fa-shield-alt"></i> {{ user.role }}</span>
+      <div class="joined">Joined {{ user.created_at.strftime('%b %d, %Y') }}</div>
+    </div>
+
+    <form method="POST" action="/admin/profile">
+      <div class="form-section-title"><i class="fas fa-user"></i> Account Details</div>
+      <div class="form-group">
+        <label>Username</label>
+        <input class="form-control" name="username" value="{{ user.username }}" required>
+      </div>
+
+      <div class="form-divider"></div>
+      <div class="form-section-title"><i class="fas fa-lock"></i> Change Password</div>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input class="form-control" type="password" name="current_password" required placeholder="Enter current password">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input class="form-control" type="password" name="new_password" placeholder="Leave blank to keep current">
+        <div class="pw-hint"><i class="fas fa-info-circle"></i> Leave empty if you don't want to change password</div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Profile</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

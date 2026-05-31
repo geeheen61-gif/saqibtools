@@ -13,6 +13,11 @@ class User(db.Model):
     is_active   = db.Column(db.Boolean, default=True)
     created_by  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at  = db.Column(db.DateTime, default=_utcnow)
+    # Subscription and credit limit system
+    subscription_expires_at = db.Column(db.DateTime, nullable=True)  # NULL = no expiration
+    monthly_credit_limit = db.Column(db.Integer, default=100)  # Default 100 credits per month
+    credits_used_current_month = db.Column(db.Integer, default=0)
+    last_credit_reset = db.Column(db.DateTime, default=_utcnow)
 
     assigned_tools = db.relationship('UserTool', back_populates='user',
                                      cascade='all, delete-orphan')
@@ -40,6 +45,7 @@ class UserTool(db.Model):
     tool_id     = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=_utcnow)
     expires_at  = db.Column(db.DateTime, nullable=True)
+    credit_limit = db.Column(db.Integer, nullable=True)
 
     user = db.relationship('User',  back_populates='assigned_tools')
     tool = db.relationship('Tool',  back_populates='assigned_users')

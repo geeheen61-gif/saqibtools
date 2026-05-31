@@ -4,13 +4,15 @@ ANTI_THEFT_JS = """
 (function(){
     document.addEventListener('contextmenu',function(e){e.preventDefault()});
     document.addEventListener('keydown',function(e){
-        if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(e.key))||(e.ctrlKey&&['U','S'].includes(e.key))){e.preventDefault();return false}
+        var key = e.key.toUpperCase();
+        if (key === 'F12' || (e.ctrlKey && (key === 'U' || key === 'S' || key === 'C')) || (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(key))) {
+            e.preventDefault();
+            return false;
+        }
     });
     Object.defineProperty(document,'cookie',{get:function(){return ''},configurable:false,set:function(){return true}});
     ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
-    setInterval(function(){
-        if(window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160)window.location.replace('about:blank')
-    },1000);
+    // Removed aggressive resize-based page redirect to avoid closing valid browser sessions when users switch windows or use the taskbar.
 })();
 """
 
@@ -159,8 +161,15 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             print(f'[browser] Page loaded: {url}')
-            page.wait_for_event('close', timeout=0)
-            context.close()
+            try:
+                page.wait_for_event('close')
+            except Exception as e:
+                print(f'[browser] Warning waiting for page close: {e}')
+            try:
+                if not getattr(context, 'is_closed', lambda: False)():
+                    context.close()
+            except Exception as e:
+                print(f'[browser] Warning closing context: {e}')
 
         import shutil
         try:
