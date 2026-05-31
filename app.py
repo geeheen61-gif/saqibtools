@@ -974,9 +974,7 @@ def launch_mobile(token):
         return 'Invalid or expired launch token.', 404
     return render_template('launch_mobile.html',
                            tool_name=lt.tool_name,
-                           tool_url=lt.url,
-                           cookies=lt.cookies,
-                           token=token)
+                           tool_url=lt.url)
 
 
 @app.route('/launch-download/<token>')
