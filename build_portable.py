@@ -117,7 +117,7 @@ def log_error(msg):
         pass
 
 try:
-    import subprocess, shutil, ctypes, json, urllib.request, threading
+    import subprocess, shutil, ctypes, json, urllib.request, threading, tempfile
     from http.server import HTTPServer, BaseHTTPRequestHandler
     import tkinter as tk
     from tkinter import font as tkfont
@@ -263,28 +263,28 @@ def _open_tool(token, server):
             if exp and not c.get('session'):
                 cookie['expires'] = int(float(exp))
             cookies.append(cookie)
-        profile_dir = os.path.join(BASE, 'profile_tool')
-        os.makedirs(profile_dir, exist_ok=True)
-        with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                profile_dir, headless=False,
-                executable_path=chromium_path,
-                args=['--start-maximized', '--disable-blink-features=AutomationControlled',
-                      '--no-sandbox', '--disable-gpu'],
-                ignore_default_args=['--enable-automation'],
-                no_viewport=True,
-            )
-            page = context.new_page()
-            if root:
-                try: page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30000)
-                except: pass
-            context.add_cookies(cookies)
-            page.goto(url, wait_until='domcontentloaded', timeout=60000)
-            page.wait_for_event('close', timeout=0)
-            context.close()
-        import shutil
-        try: shutil.rmtree(profile_dir, ignore_errors=True)
-        except: pass
+        profile_dir = tempfile.mkdtemp(prefix='st_tool_')
+        try:
+            with sync_playwright() as p:
+                context = p.chromium.launch_persistent_context(
+                    profile_dir, headless=False,
+                    executable_path=chromium_path,
+                    args=['--start-maximized', '--disable-blink-features=AutomationControlled',
+                          '--no-sandbox', '--disable-gpu'],
+                    ignore_default_args=['--enable-automation'],
+                    no_viewport=True,
+                )
+                page = context.new_page()
+                if root:
+                    try: page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30000)
+                    except: pass
+                context.add_cookies(cookies)
+                page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                page.wait_for_event('close', timeout=0)
+                context.close()
+        finally:
+            try: shutil.rmtree(profile_dir, ignore_errors=True)
+            except: pass
     except Exception:
         import traceback
         log_error(traceback.format_exc())
