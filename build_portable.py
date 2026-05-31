@@ -117,7 +117,8 @@ def log_error(msg):
         pass
 
 try:
-    import subprocess, shutil, ctypes, json, urllib.request
+    import subprocess, shutil, ctypes, json, urllib.request, threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
     import tkinter as tk
     from tkinter import font as tkfont
 except Exception as e:
@@ -173,11 +174,128 @@ class SplashScreen:
     def close(self):
         self.win.destroy()
 
+# ── Local bridge server ────────────────────────────────────────────────────
+BRIDGE_PORT = 17563
+
+class BridgeHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith('/launch?'):
+            from urllib.parse import urlparse, parse_qs
+            qs = parse_qs(urlparse(self.path).query)
+            token = (qs.get('token') or [None])[0]
+            server = (qs.get('server') or [None])[0]
+            if token and server:
+                threading.Thread(target=_open_tool, args=(token, server), daemon=True).start()
+                self._ok('{"ok":true}')
+            else:
+                self._ok('{"ok":false,"error":"Missing token or server"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def _ok(self, body):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(body.encode())
+
+    def log_message(self, *a):
+        pass
+
+def _run_bridge():
+    try:
+        httpd = HTTPServer(('127.0.0.1', BRIDGE_PORT), BridgeHandler)
+        httpd.serve_forever()
+    except Exception:
+        pass
+
+def _open_tool(token, server):
+    try:
+        sp = os.path.join(BASE, "python", "Lib", "site-packages")
+        if os.path.isdir(sp):
+            sys.path.insert(0, sp)
+        from playwright.sync_api import sync_playwright
+        cf_dirs = [d for d in os.listdir(BASE) if d.startswith("chromium-")]
+        if not cf_dirs:
+            return
+        chromium_path = os.path.join(BASE, cf_dirs[0], "chrome-win64", "chrome.exe")
+        if not os.path.isfile(chromium_path):
+            chromium_path = os.path.join(BASE, cf_dirs[0], "chrome-win", "chrome.exe")
+        if not os.path.isfile(chromium_path):
+            chromium_path = os.path.join(BASE, cf_dirs[0], "chrome", "chrome.exe")
+        if not os.path.isfile(chromium_path):
+            return
+
+        req = urllib.request.Request(f'{server}/api/claim-launch/{token}')
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+        if not data.get('ok'):
+            return
+        url = data['url']
+        cookies_raw = json.loads(data['cookies'])
+        username = data['username']
+        def root_domain(url):
+            from urllib.parse import urlparse
+            host = urlparse(url).netloc.split('@')[-1].split(':')[0]
+            parts = host.split('.')
+            return '.'.join(parts[1:]) if len(parts) >= 3 else host
+        root = root_domain(url)
+        cookies = []
+        for c in cookies_raw:
+            if not c.get('name'): continue
+            domain = c.get('domain', '') or ''
+            if not domain or domain in ('null', 'undefined'):
+                domain = '.' + root if root else ''
+            if not domain: continue
+            if not domain.startswith('.') and not c.get('hostOnly', False):
+                domain = '.' + domain
+            cookie = {'name': c['name'], 'value': str(c.get('value', '')),
+                      'domain': domain, 'path': c.get('path', '/') or '/',
+                      'secure': bool(c.get('secure', False)),
+                      'httpOnly': bool(c.get('httpOnly', False))}
+            ss = (c.get('sameSite') or '').lower()
+            if ss in ('no_restriction', 'none'):
+                cookie['sameSite'] = 'None'; cookie['secure'] = True
+            elif ss == 'strict': cookie['sameSite'] = 'Strict'
+            elif ss == 'lax': cookie['sameSite'] = 'Lax'
+            exp = c.get('expirationDate')
+            if exp and not c.get('session'):
+                cookie['expires'] = int(float(exp))
+            cookies.append(cookie)
+        profile_dir = os.path.join(BASE, 'profile_tool')
+        os.makedirs(profile_dir, exist_ok=True)
+        with sync_playwright() as p:
+            context = p.chromium.launch_persistent_context(
+                profile_dir, headless=False,
+                executable_path=chromium_path,
+                args=['--start-maximized', '--disable-blink-features=AutomationControlled',
+                      '--no-sandbox', '--disable-gpu'],
+                ignore_default_args=['--enable-automation'],
+                no_viewport=True,
+            )
+            page = context.new_page()
+            if root:
+                try: page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30000)
+                except: pass
+            context.add_cookies(cookies)
+            page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            page.wait_for_event('close', timeout=0)
+            context.close()
+        import shutil
+        try: shutil.rmtree(profile_dir, ignore_errors=True)
+        except: pass
+    except Exception:
+        import traceback
+        log_error(traceback.format_exc())
+
 def main():
     try: ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
     except: pass
 
     try:
+        # Start local bridge server (for .bat download fallback on non-portable browsers)
+        threading.Thread(target=_run_bridge, daemon=True).start()
         splash = SplashScreen()
         splash.win.update()
 
@@ -218,7 +336,21 @@ def main():
                 no_viewport=True,
             )
             splash.close()
+
+            # Intercept navigation to /launch/<token> — open tool in new window,
+            # then redirect dashboard page back so user stays on the app.
+            def _route_launch(route, req):
+                url = req.url
+                if '/launch/' in url and '/launch-download/' not in url and '/launch/mobile/' not in url:
+                    token = url.split('/launch/')[-1].split('?')[0].split('#')[0]
+                    if token:
+                        threading.Thread(target=_open_tool, args=(token, SERVER), daemon=True).start()
+                        route.fulfill(status=302, headers={'Location': SERVER + '/dashboard'})
+                        return
+                route.continue_()
+
             page = context.new_page()
+            page.route('**/launch/*', _route_launch)
             page.goto(SERVER, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_event("close", timeout=0)
             context.close()
@@ -244,6 +376,12 @@ exit
 """
 with open(os.path.join(BUILD_DIR, "Launch_Saqib_Tools.bat"), "w", encoding="utf-8") as f:
     f.write(BAT.strip())
+
+# Copy launcher.py (for token claim flow when user downloads .bat from launch page)
+launcher_src = os.path.join(os.path.dirname(__file__), "static", "launcher.py")
+if os.path.isfile(launcher_src):
+    shutil.copy2(launcher_src, os.path.join(BUILD_DIR, "launcher.py"))
+    print("  -> Copied launcher.py for .bat download flow")
 
 # README
 README = f"""

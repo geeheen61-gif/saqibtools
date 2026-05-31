@@ -887,23 +887,24 @@ def use_tool(tid):
     if assignment.expires_at and datetime.now(timezone.utc).replace(tzinfo=None) > assignment.expires_at:
         return jsonify({'ok': False, 'msg': 'Your subscription has expired.'})
 
-    # Credit and subscription check
     user = db.session.get(User, uid)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    # Per-tool credited limits override any generic user monthly credit settings.
-    if assignment.credit_limit and assignment.credit_limit > 0:
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        tool_usage_count = (UsageLog.query
-                            .filter_by(user_id=uid, tool_id=tid)
-                            .filter(UsageLog.opened_at >= month_start)
-                            .count())
-        if tool_usage_count >= assignment.credit_limit:
-            return jsonify({'ok': False, 'msg': 'Tool credit limit reached for this month. Please contact administrator to increase access.'})
+    on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
 
-    # Check user subscription expiration if set
-    if user.subscription_expires_at and now > user.subscription_expires_at:
-        return jsonify({'ok': False, 'msg': 'Subscription has expired. Please renew to continue using tools.'})
+    # Skip credit & subscription checks on Render so users never see limit errors
+    if not on_render:
+        if assignment.credit_limit and assignment.credit_limit > 0:
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            tool_usage_count = (UsageLog.query
+                                .filter_by(user_id=uid, tool_id=tid)
+                                .filter(UsageLog.opened_at >= month_start)
+                                .count())
+            if tool_usage_count >= assignment.credit_limit:
+                return jsonify({'ok': False, 'msg': 'Tool credit limit reached for this month. Please contact administrator to increase access.'})
+
+        if user.subscription_expires_at and now > user.subscription_expires_at:
+            return jsonify({'ok': False, 'msg': 'Subscription has expired. Please renew to continue using tools.'})
 
     # Mobile mode: provide cookies for manual import
     if _is_mobile():
@@ -920,13 +921,13 @@ def use_tool(tid):
             'msg': 'Opening on your device...',
         })
 
-    on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
     if on_render:
         token = secrets.token_urlsafe(16)
         db.session.add(LaunchToken(
             token=token, url=tool.url, cookies=tool.cookies,
             username=session['username'], tool_name=tool.name,
         ))
+        user.credits_used_current_month += 1
         db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({
@@ -986,27 +987,33 @@ def launch_download(token):
 
     server_url = request.host_url.rstrip('/')
     tool_name = lt.tool_name
+    safe_name = tool_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
 
     bat_content = f"""@echo off
 title Saqib Tools - {tool_name}
 cd /d "%~dp0"
-if not exist "launcher.py" (
-    echo.
-    echo  launcher.py not found in this folder.
-    echo  Download the ZIP package first and extract it here.
-    echo  Or visit: {server_url}
-    pause
-    exit /b 1
+if exist "python\\pythonw.exe" (
+    start "" "python\\pythonw.exe" "launcher.py" --token {token} --server {server_url}
+    exit /b 0
 )
-python launcher.py --token {token} --server {server_url}
+if exist "launcher.py" (
+    python launcher.py --token {token} --server {server_url}
+    echo.
+    pause
+    exit /b 0
+)
 echo.
+echo  launcher.py not found in this folder.
+echo  Extract the ZIP package first, then run this .bat from that folder.
+echo  Or visit: {server_url}
 pause
+exit /b 1
 """
-    return bat_content, 200, {
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': f'attachment; filename="launch_{tool_name.replace(" ", "_")}.bat"',
-        'X-Content-Type-Options': 'nosniff',
-    }
+    response = Response(bat_content, mimetype='application/octet-stream')
+    response.headers['Content-Disposition'] = f'attachment; filename="launch_{safe_name}.bat"'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Content-Length'] = str(len(bat_content.encode('utf-8')))
+    return response
 
 
 # ── Context processors ────────────────────────────────────────────────

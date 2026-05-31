@@ -5,6 +5,12 @@ Error messages appear as Windows message boxes.
 """
 import sys, json, urllib.request, subprocess, os, tempfile, shutil, ctypes, importlib
 
+BASE = os.path.dirname(os.path.abspath(__file__))
+# Use bundled Playwright if running from portable package
+sp = os.path.join(BASE, "python", "Lib", "site-packages")
+if os.path.isdir(sp):
+    sys.path.insert(0, sp)
+
 MB_OK = 0
 MB_ICONERROR = 16
 MB_ICONINFO = 64
