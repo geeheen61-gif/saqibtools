@@ -240,13 +240,16 @@
       });
   }
 
-  document.querySelector('.tool-grid').addEventListener('click', function(e) {
-    var btn = e.target.closest('.launch-btn');
-    if (btn && !btn.disabled) {
-      var id = btn.getAttribute('data-id');
-      var name = btn.getAttribute('data-name');
-      useTool(id, name, btn);
-    }
-  });
+  var toolGrid = document.querySelector('.tool-grid');
+  if (toolGrid) {
+    toolGrid.addEventListener('click', function(e) {
+      var btn = e.target.closest('.launch-btn');
+      if (btn && !btn.disabled) {
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name');
+        useTool(id, name, btn);
+      }
+    });
+  }
 </script>
 {% endblock %}
