@@ -274,11 +274,8 @@ def _open_tool(token, server):
                     ignore_default_args=['--enable-automation'],
                     no_viewport=True,
                 )
-                page = context.new_page()
-                if root:
-                    try: page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30000)
-                    except: pass
                 n_requested = len(cookies)
+                n_injected = 0
                 try:
                     context.add_cookies(cookies)
                     n_injected = len(context.cookies())
@@ -286,6 +283,7 @@ def _open_tool(token, server):
                         log_error(f'Cookie count mismatch: {n_injected} of {n_requested} injected')
                 except Exception as e:
                     log_error(f'add_cookies failed ({n_requested} cookies): {e}')
+                page = context.new_page()
                 page.goto(url, wait_until='domcontentloaded', timeout=60000)
                 page.wait_for_event('close', timeout=0)
                 context.close()

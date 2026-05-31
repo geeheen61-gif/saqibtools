@@ -148,17 +148,10 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             context.add_init_script(ANTI_THEFT_JS)
             context.add_init_script(_build_watermark_script(username))
 
-            page = context.new_page()
-            root = _root_domain(url)
-            if root:
-                try:
-                    page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30_000)
-                    print(f'[browser] Root domain loaded: https://{root}/')
-                except Exception as e:
-                    print(f'[browser] Root domain load skipped ({e})')
             context.add_cookies(cookies)
             injected = context.cookies()
             print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
+            page = context.new_page()
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             print(f'[browser] Page loaded: {url}')
             try:

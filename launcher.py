@@ -123,18 +123,11 @@ def main():
                         'AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/124.0.0.0 Safari/537.36'),
         )
-        page = context.new_page()
-
-        root = root_domain(url)
-        if root:
-            try:
-                page.goto(f'https://{root}/', wait_until='domcontentloaded', timeout=30_000)
-            except Exception:
-                pass
-
+        # Inject cookies BEFORE any navigation
         context.add_cookies(cookies)
         print(f'[*] Injected {len(context.cookies())} cookies')
 
+        page = context.new_page()
         page.goto(url, wait_until='domcontentloaded', timeout=60_000)
         print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
 
