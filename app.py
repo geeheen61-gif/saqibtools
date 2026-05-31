@@ -992,10 +992,17 @@ def launch_download(token):
     bat_content = f"""@echo off
 title Saqib Tools - {tool_name}
 cd /d "%~dp0"
+REM 1) Portable bundled Python
 if exist "python\\pythonw.exe" (
     start "" "python\\pythonw.exe" "launcher.py" --token {token} --server {server_url}
     exit /b 0
 )
+REM 2) Download launcher.py from server if missing
+if not exist "launcher.py" (
+    echo Downloading launcher script...
+    powershell -Command "Invoke-WebRequest -Uri '{server_url}/static/launcher.py' -OutFile 'launcher.py'" >nul 2>&1
+)
+REM 3) Run with system Python (OS must have Playwright + Chromium installed)
 if exist "launcher.py" (
     python launcher.py --token {token} --server {server_url}
     echo.
@@ -1003,9 +1010,9 @@ if exist "launcher.py" (
     exit /b 0
 )
 echo.
-echo  launcher.py not found in this folder.
-echo  Extract the ZIP package first, then run this .bat from that folder.
-echo  Or visit: {server_url}
+echo  Could not download launcher.py.
+echo  Make sure you have Python and Playwright installed, then visit:
+echo  {server_url}
 pause
 exit /b 1
 """
