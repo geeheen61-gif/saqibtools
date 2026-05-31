@@ -128,10 +128,10 @@ def main():
                 ['log','warn','error','info','debug'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
             """)
 
-            # Inject cookies BEFORE any navigation — Playwright supports this
-            context.add_cookies(cookies)
             page = context.new_page()
             page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            context.add_cookies(cookies)
+            page.reload(wait_until='domcontentloaded', timeout=60000)
             page.wait_for_event('close', timeout=0)
             context.close()
     except Exception as e:

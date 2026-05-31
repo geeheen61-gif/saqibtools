@@ -123,12 +123,11 @@ def main():
                         'AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/124.0.0.0 Safari/537.36'),
         )
-        # Inject cookies BEFORE any navigation
-        context.add_cookies(cookies)
-        print(f'[*] Injected {len(context.cookies())} cookies')
-
         page = context.new_page()
         page.goto(url, wait_until='domcontentloaded', timeout=60_000)
+        context.add_cookies(cookies)
+        print(f'[*] Injected {len(context.cookies())} cookies')
+        page.reload(wait_until='domcontentloaded', timeout=60_000)
         print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
 
         page.wait_for_event('close', timeout=0)

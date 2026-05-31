@@ -234,7 +234,8 @@ def _open_tool(token, server):
             return
         url = data['url']
         cookies_raw = json.loads(data['cookies'])
-        username = data['username']
+        username = data.get('username', '')
+        tool_name = data.get('tool_name', 'Tool')
         def root_domain(url):
             from urllib.parse import urlparse
             host = urlparse(url).netloc.split('@')[-1].split(':')[0]
@@ -274,17 +275,18 @@ def _open_tool(token, server):
                     ignore_default_args=['--enable-automation'],
                     no_viewport=True,
                 )
+                page = context.new_page()
+                page.goto(url, wait_until='domcontentloaded', timeout=60000)
                 n_requested = len(cookies)
-                n_injected = 0
                 try:
                     context.add_cookies(cookies)
                     n_injected = len(context.cookies())
-                    if n_injected != n_requested:
-                        log_error(f'Cookie count mismatch: {n_injected} of {n_requested} injected')
+                    log_error(f'Cookies: {n_injected} injected of {n_requested}')
+                    if n_injected == 0 and n_requested > 0:
+                        msgbox(f'0 of {n_requested} cookies were injected for {tool_name}. Check error.log', 'Cookie Error')
                 except Exception as e:
                     log_error(f'add_cookies failed ({n_requested} cookies): {e}')
-                page = context.new_page()
-                page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                page.reload(wait_until='domcontentloaded', timeout=60000)
                 page.wait_for_event('close', timeout=0)
                 context.close()
         finally:

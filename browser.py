@@ -148,12 +148,13 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             context.add_init_script(ANTI_THEFT_JS)
             context.add_init_script(_build_watermark_script(username))
 
+            page = context.new_page()
+            page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
             injected = context.cookies()
             print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
-            page = context.new_page()
-            page.goto(url, wait_until='domcontentloaded', timeout=60_000)
-            print(f'[browser] Page loaded: {url}')
+            page.reload(wait_until='domcontentloaded', timeout=60_000)
+            print(f'[browser] Page reloaded: {url}')
             try:
                 page.wait_for_event('close')
             except Exception as e:
