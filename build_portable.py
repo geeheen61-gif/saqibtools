@@ -291,13 +291,12 @@ def _open_tool(token, server):
                 if is_semrush:
                     page.add_init_script("""
                         (function(){
+                            var sel='#srf-header > div > div.srf-header__end,#srf-header__end';
                             var s=document.createElement('style');
-                            s.textContent='#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo{display:none!important}';
-                            document.head.appendChild(s);
-                            var t=setInterval(function(){
-                                var e=document.querySelector('#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo');
-                                if(e){e.style.display='none';clearInterval(t)}
-                            },500);
+                            s.textContent=sel+'{display:none!important}';
+                            if(document.head)document.head.appendChild(s);
+                            function h(){var e=document.querySelectorAll(sel);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}
+                            h();setInterval(h,300);
                         })();
                     """)
                 page.goto(url, wait_until='domcontentloaded', timeout=60000)
@@ -311,6 +310,17 @@ def _open_tool(token, server):
                 except Exception as e:
                     log_error(f'add_cookies failed ({n_requested} cookies): {e}')
                 page.reload(wait_until='domcontentloaded', timeout=60000)
+                if is_semrush:
+                    page.evaluate("""
+                        (function(){
+                            var sel='#srf-header > div > div.srf-header__end,#srf-header__end';
+                            var s=document.createElement('style');
+                            s.textContent=sel+'{display:none!important}';
+                            if(document.head)document.head.appendChild(s);
+                            function h(){var e=document.querySelectorAll(sel);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}
+                            h();setInterval(h,300);
+                        })();
+                    """)
                 page.wait_for_event('close', timeout=0)
                 context.close()
         finally:

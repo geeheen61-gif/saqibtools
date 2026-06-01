@@ -1051,6 +1051,61 @@
     </main>
   </div>
 
+  <!-- WhatsApp Floating Button -->
+  <style>
+    .whatsapp-float {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: #25D366;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .whatsapp-float:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+      color: white;
+    }
+    .whatsapp-float i {
+      font-size: 22px;
+    }
+    @media (max-width: 768px) {
+      .whatsapp-float {
+        bottom: 16px;
+        right: 16px;
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+      .whatsapp-float i {
+        font-size: 18px;
+      }
+    }
+    @media (max-width: 480px) {
+      .whatsapp-float .wa-text {
+        display: none;
+      }
+      .whatsapp-float {
+        padding: 12px;
+        border-radius: 50%;
+      }
+    }
+  </style>
+  <a class="whatsapp-float" href="https://wa.me/923001234567" target="_blank" rel="noopener">
+    <i class="fab fa-whatsapp"></i>
+    <span class="wa-text">0300 1234567</span>
+  </a>
+
   <script>
     function togglePanel() {
       document.getElementById('rightPanel').classList.toggle('open');

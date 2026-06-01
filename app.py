@@ -72,6 +72,19 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 db.init_app(app)
 
 
+# ── Single-session check ──────────────────────────────────────────────
+@app.before_request
+def check_session():
+    if 'uid' in session and 'session_token' in session:
+        if request.endpoint in ('static', 'login', 'logout', 'health'):
+            return
+        user = db.session.get(User, session['uid'])
+        if not user or user.session_token != session['session_token']:
+            session.clear()
+            from flask import redirect
+            return redirect('/login')
+
+
 # ── Decorators ────────────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
@@ -148,9 +161,13 @@ def login():
         password = request.form.get('password', '').encode()
         user = User.query.filter_by(username=username).first()
         if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
-            session['uid']      = user.id
-            session['username'] = user.username
-            session['role']     = user.role
+            tok = secrets.token_hex(32)
+            user.session_token = tok
+            db.session.commit()
+            session['uid']           = user.id
+            session['username']      = user.username
+            session['role']          = user.role
+            session['session_token'] = tok
             return redirect(url_for('home'))
         flash('Invalid username or password.', 'error')
     return render_template('login.html')
@@ -158,6 +175,11 @@ def login():
 
 @app.route('/logout')
 def logout():
+    if 'uid' in session:
+        user = db.session.get(User, session['uid'])
+        if user:
+            user.session_token = None
+            db.session.commit()
     session.clear()
     return redirect(url_for('login'))
 
@@ -1137,6 +1159,12 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN last_credit_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;'))
             conn.commit()
         print('[MIGRATION] Added last_credit_reset to users')
+
+    if 'session_token' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN session_token VARCHAR(64);'))
+            conn.commit()
+        print('[MIGRATION] Added session_token to users')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()

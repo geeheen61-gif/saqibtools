@@ -86,13 +86,12 @@ ANTI_THEFT_JS = """
 
 SEMRUSH_JS = """
 (function(){
+    var sel='#srf-header > div > div.srf-header__end,#srf-header__end';
     var s=document.createElement('style');
-    s.textContent='#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo{display:none!important}';
-    document.head.appendChild(s);
-    var t=setInterval(function(){
-        var e=document.querySelector('#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo');
-        if(e){e.style.display='none';clearInterval(t)}
-    },500);
+    s.textContent=sel+'{display:none!important}';
+    if(document.head)document.head.appendChild(s);
+    function h(){var e=document.querySelectorAll(sel);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}
+    h();setInterval(h,300);
 })();
 """
 
@@ -161,6 +160,8 @@ def main():
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
             page.reload(wait_until='domcontentloaded', timeout=60_000)
+            if is_semrush:
+                page.evaluate(SEMRUSH_JS)
             print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
 
             page.wait_for_event('close', timeout=0)

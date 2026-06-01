@@ -18,6 +18,8 @@ class User(db.Model):
     monthly_credit_limit = db.Column(db.Integer, default=100)  # Default 100 credits per month
     credits_used_current_month = db.Column(db.Integer, default=0)
     last_credit_reset = db.Column(db.DateTime, default=_utcnow)
+    # Single-session tracking
+    session_token = db.Column(db.String(64), nullable=True)
 
     assigned_tools = db.relationship('UserTool', back_populates='user',
                                      cascade='all, delete-orphan')
