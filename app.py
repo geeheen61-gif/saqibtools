@@ -896,9 +896,19 @@ def user_dashboard():
     tool_expiry = {}
     for r in rows:
         tool_expiry[r.tool_id] = r.expires_at
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    user_tool_credits_used = {}
+    usage_logs = UsageLog.query.filter(
+        UsageLog.user_id == uid,
+        UsageLog.opened_at >= month_start
+    ).all()
+    for log in usage_logs:
+        key = (log.user_id, log.tool_id)
+        user_tool_credits_used[key] = user_tool_credits_used.get(key, 0) + 1
     return render_template('user_dashboard.html', tools=tools,
                            tool_expiry=tool_expiry,
                            tool_assignments=tool_assignments,
+                           user_tool_credits_used=user_tool_credits_used,
                            now=now)
 
 
