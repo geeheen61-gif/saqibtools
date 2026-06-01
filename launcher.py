@@ -98,34 +98,36 @@ def main():
         print('[*] Playwright installed')
 
     # Auto-install chromium if missing
-    from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
-        exe = p.chromium.executable_path
-        if not exe or not os.path.isfile(exe):
-            print('[*] Installing Chromium browser (1-2 minutes)...')
-            subprocess.run([sys.executable, '-m', 'playwright', 'install', 'chromium'], timeout=300)
-            print('[*] Chromium installed')
-        else:
-            print('[*] Chromium browser found')
-
-    # Format cookies and launch browser
-    print('[*] Opening Chromium with your session...')
-    cookies = format_cookies(cookies_raw, url)
-    user_data_dir = tempfile.mkdtemp(prefix='pw_profile_')
-
-    with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            user_data_dir, headless=False,
-            args=['--start-maximized', '--disable-blink-features=AutomationControlled'],
-            ignore_default_args=['--enable-automation'],
-            no_viewport=True,
-            user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                        'AppleWebKit/537.36 (KHTML, like Gecko) '
-                        'Chrome/124.0.0.0 Safari/537.36'),
-        )
-        page = context.new_page()
-        page.goto(url, wait_until='domcontentloaded', timeout=60_000)
-        context.add_cookies(cookies)
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            is_semrush = 'semrush.com' in url
+            tool_args = ['--disable-blink-features=AutomationControlled', '--no-sandbox']
+            if is_semrush:
+                tool_args.append('--kiosk')
+            else:
+                tool_args.append('--start-maximized')
+            context = p.chromium.launch_persistent_context(
+                user_data_dir, headless=False,
+                args=tool_args,
+                ignore_default_args=['--enable-automation'],
+                no_viewport=True,
+                user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                            'AppleWebKit/537.36 (KHTML, like Gecko) '
+                            'Chrome/124.0.0.0 Safari/537.36'),
+            )
+            page = context.new_page()
+            if is_semrush:
+                page.add_init_script("""
+                    (function(){
+                        var el = document.evaluate(
+                            '/html/body/div[1]/div[3]/div/header/div/div[3]',
+                            document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+                        ).singleNodeValue;
+                        if(el) el.style.display='none';
+                    })();
+                """)
+            page.goto(url, wait_until='domcontentloaded', timeout=60_000)
+            context.add_cookies(cookies)
         print(f'[*] Injected {len(context.cookies())} cookies')
         page.reload(wait_until='domcontentloaded', timeout=60_000)
         print(f'[+] {tool_name} is ready! Close the browser window to end the session.')

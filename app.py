@@ -938,6 +938,7 @@ def use_tool(tid):
     # Local mode: auto-installs Playwright+Chromium if missing, then opens browser
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
+        user.credits_used_current_month += 1
         db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({'ok': True, 'mode': 'local', 'msg': 'Browser opened on your desktop.'})

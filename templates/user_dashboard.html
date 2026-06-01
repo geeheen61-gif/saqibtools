@@ -152,8 +152,9 @@
       <strong>Credit limit:</strong> {{ assignment.credit_limit }} credits/month
     </div>
     {% elif current_user.monthly_credit_limit is not none %}
+    {% set remaining = current_user.monthly_credit_limit - current_user.credits_used_current_month %}
     <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--slate-500);">
-      <strong>Monthly credit pool:</strong> {{ current_user.monthly_credit_limit }} credits/month
+      <strong>Credits left:</strong> {{ remaining }} / {{ current_user.monthly_credit_limit }}
     </div>
     {% endif %}
     {% if expiry %}

@@ -10,7 +10,6 @@ ANTI_THEFT_JS = """
             return false;
         }
     });
-    Object.defineProperty(document,'cookie',{get:function(){return ''},configurable:false,set:function(){return true}});
     ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
     // Removed aggressive resize-based page redirect to avoid closing valid browser sessions when users switch windows or use the taskbar.
 })();
@@ -138,8 +137,12 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
         user_data_dir = tempfile.mkdtemp(prefix='pw_profile_')
 
         with sync_playwright() as p:
+            tool_args = list(LAUNCH_ARGS)
+            if 'semrush.com' in url:
+                tool_args = [a for a in tool_args if a != '--start-maximized']
+                tool_args.append('--kiosk')
             context = p.chromium.launch_persistent_context(
-                user_data_dir, headless=False, args=LAUNCH_ARGS,
+                user_data_dir, headless=False, args=tool_args,
                 ignore_default_args=['--enable-automation'],
                 no_viewport=True,
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -149,6 +152,16 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             context.add_init_script(_build_watermark_script(username))
 
             page = context.new_page()
+            if 'semrush.com' in url:
+                page.add_init_script("""
+                    (function(){
+                        var el = document.evaluate(
+                            '/html/body/div[1]/div[3]/div/header/div/div[3]',
+                            document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+                        ).singleNodeValue;
+                        if(el) el.style.display='none';
+                    })();
+                """)
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
             injected = context.cookies()
