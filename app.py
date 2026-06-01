@@ -474,7 +474,7 @@ def admin_edit_user(uid):
 @app.route('/admin/assign')
 @admin_required
 def admin_assign():
-    users = User.query.filter_by(role='user').all()
+    users = User.query.filter_by(role='user').order_by(User.created_at.desc()).all()
     tools = Tool.query.filter_by(is_active=True).all()
     assignments = {}
     tool_expiry = {}
@@ -484,11 +484,23 @@ def admin_assign():
         assignment_data.setdefault(ut.user_id, {})[ut.tool_id] = ut
         if ut.expires_at:
             tool_expiry.setdefault(ut.user_id, {})[ut.tool_id] = ut.expires_at
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    user_credits_used = {}
+    user_tool_credits_used = {}
+    usage_logs = UsageLog.query.filter(UsageLog.opened_at >= month_start).all()
+    for log in usage_logs:
+        user_credits_used[log.user_id] = user_credits_used.get(log.user_id, 0) + 1
+        key = (log.user_id, log.tool_id)
+        user_tool_credits_used[key] = user_tool_credits_used.get(key, 0) + 1
     return render_template('admin_assign.html',
                            users=users, tools=tools,
                            assignments=assignments,
                            tool_expiry=tool_expiry,
-                           assignment_data=assignment_data)
+                           assignment_data=assignment_data,
+                           user_credits_used=user_credits_used,
+                           user_tool_credits_used=user_tool_credits_used,
+                           month_start=month_start)
 
 
 @app.route('/admin/assign/update', methods=['POST'])
@@ -919,7 +931,9 @@ def use_tool(tid):
 
     # Skip credit & subscription checks on Render so users never see limit errors
     if not on_render:
-        if assignment.credit_limit and assignment.credit_limit > 0:
+        if assignment.credit_limit is not None:
+            if assignment.credit_limit == 0:
+                return jsonify({'ok': False, 'msg': 'Access denied: credit limit set to 0.'})
             month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             tool_usage_count = (UsageLog.query
                                 .filter_by(user_id=uid, tool_id=tid)

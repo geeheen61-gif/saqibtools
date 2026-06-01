@@ -470,7 +470,7 @@
           <span><i class="fas fa-key"></i> {{ active_count.n + expired_count.n }} assigned</span>
         </div>
       </div>
-      <div class="user-stats">
+        <div class="user-stats">
         <div class="user-stat">
           <div class="num blue">{{ active_count.n + expired_count.n }}</div>
           <div class="lbl">Assigned</div>
@@ -485,6 +485,12 @@
           <div class="lbl">Expired</div>
         </div>
         {% endif %}
+        {% set used = user_credits_used.get(user.id, 0) %}
+        {% set limit = user.monthly_credit_limit or 0 %}
+        <div class="user-stat">
+          <div class="num {{ 'red' if limit > 0 and used >= limit else 'orange' if limit > 0 and used >= limit * 0.8 else 'green' }}">{{ used }}/{{ limit or '∞' }}</div>
+          <div class="lbl">Credits</div>
+        </div>
         <i class="fas fa-chevron-down" style="color:#94a3b8;font-size:12px;transition:transform 0.2s"></i>
       </div>
     </div>
@@ -533,6 +539,10 @@
                    value="{{ credit_limit if credit_limit is not none else '' }}"
                    placeholder="Credits/mo"
                    {{ 'disabled' if is_expired else '' }}>
+            {% set tool_used = user_tool_credits_used.get((user.id, tool.id), 0) %}
+            {% if tool_used > 0 %}
+            <span class="dur-badge {{ 'dur-red' if credit_limit and tool_used >= credit_limit else 'dur-orange' }}"><i class="fas fa-bolt"></i> {{ tool_used }} used</span>
+            {% endif %}
             {% if checked and expiry %}
               {% set remaining = (expiry - now).days if expiry > now else 0 %}
               {% if is_expired %}
