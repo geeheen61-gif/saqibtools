@@ -9,6 +9,7 @@ from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash, Response)
 
 from database import db, User, Tool, UserTool, UsageLog, LaunchToken
+import base64
 from browser  import open_tool
 
 
@@ -990,33 +991,44 @@ def launch_download(token):
     tool_name = lt.tool_name
     safe_name = tool_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
 
-    bat_content = f"""@echo off
-title Saqib Tools - {tool_name}
-cd /d "%~dp0"
-REM 1) Portable bundled Python
-if exist "python\\pythonw.exe" (
-    start "" "python\\pythonw.exe" "launcher.py" --token {token} --server {server_url}
-    exit /b 0
-)
-REM 2) Download launcher.py from server if missing
-if not exist "launcher.py" (
-    echo Downloading launcher script...
-    powershell -Command "Invoke-WebRequest -Uri '{server_url}/static/launcher.py' -OutFile 'launcher.py'" >nul 2>&1
-)
-REM 3) Run with system Python (OS must have Playwright + Chromium installed)
-if exist "launcher.py" (
-    python launcher.py --token {token} --server {server_url}
-    echo.
-    pause
-    exit /b 0
-)
-echo.
-echo  Could not download launcher.py.
-echo  Make sure you have Python and Playwright installed, then visit:
-echo  {server_url}
-pause
-exit /b 1
-"""
+    # Read and base64-encode the Python launcher
+    launcher_path = os.path.join(os.path.dirname(__file__), 'static', 'launcher.py')
+    b64 = ''
+    if os.path.isfile(launcher_path):
+        with open(launcher_path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode()
+
+    bat_parts = []
+    bat_parts.append(f'@echo off')
+    bat_parts.append(f'title Saqib Tools - {tool_name}')
+    bat_parts.append(f'cd /d "%~dp0"')
+    if b64:
+        bat_parts.append(f'REM Extract Python launcher script')
+        bat_parts.append(f'if not exist "launcher.py" (')
+        bat_parts.append(f'    echo Extracting launcher script...')
+        cmd = '    powershell -Command "&{$b=\'' + b64 + '\';$d=[Convert]::FromBase64String($b);[IO.File]::WriteAllBytes(\'launcher.py\',$d)}" >nul 2>&1'
+        bat_parts.append(cmd)
+        bat_parts.append(f'    if not exist "launcher.py" (')
+        bat_parts.append(f'        echo Failed to create launcher.py')
+        bat_parts.append(f'        pause')
+        bat_parts.append(f'        exit /b 1')
+        bat_parts.append(f'    )')
+        bat_parts.append(f')')
+    bat_parts.append(f'REM 1) Portable bundled Python')
+    bat_parts.append(f'if exist "python\\pythonw.exe" (')
+    bat_parts.append(f'    start "" "python\\pythonw.exe" "launcher.py" --token {token} --server {server_url}')
+    bat_parts.append(f'    exit /b 0')
+    bat_parts.append(f')')
+    bat_parts.append(f'REM 2) System Python')
+    bat_parts.append(f'where python >nul 2>&1')
+    bat_parts.append(f'if %ERRORLEVEL% == 0 (')
+    bat_parts.append(f'    start "" pythonw "launcher.py" --token {token} --server {server_url}')
+    bat_parts.append(f'    exit /b 0')
+    bat_parts.append(f')')
+    bat_parts.append(f'echo Python not found. Install Python 3.9+ and try again.')
+    bat_parts.append(f'pause')
+    bat_content = '\r\n'.join(bat_parts)
+
     response = Response(bat_content, mimetype='application/octet-stream')
     response.headers['Content-Disposition'] = f'attachment; filename="launch_{safe_name}.bat"'
     response.headers['X-Content-Type-Options'] = 'nosniff'

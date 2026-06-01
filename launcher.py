@@ -87,10 +87,10 @@ ANTI_THEFT_JS = """
 SEMRUSH_JS = """
 (function(){
     var s=document.createElement('style');
-    s.textContent='#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo{display:none!important}';
+    s.textContent='#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo{display:none!important}';
     document.head.appendChild(s);
     var t=setInterval(function(){
-        var e=document.querySelector('#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo');
+        var e=document.querySelector('#srf-header>div>div.srf-header__end>nav,.srf-upgrade-banner,.srf-promo');
         if(e){e.style.display='none';clearInterval(t)}
     },500);
 })();
