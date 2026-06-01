@@ -6,7 +6,6 @@ Error messages appear as Windows message boxes.
 import sys, json, urllib.request, subprocess, os, tempfile, shutil, ctypes, importlib
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-# Use bundled Playwright if running from portable package
 sp = os.path.join(BASE, "python", "Lib", "site-packages")
 if os.path.isdir(sp):
     sys.path.insert(0, sp)
@@ -19,8 +18,31 @@ def msgbox(text, title="Saqib Tools", flags=MB_OK | MB_ICONERROR):
     try: ctypes.windll.user32.MessageBoxW(0, text, title, flags)
     except: pass
 
+ANTI_THEFT_JS = """
+(function(){
+    document.addEventListener('contextmenu',function(e){e.preventDefault()});
+    document.addEventListener('keydown',function(e){
+        var k=e.key.toUpperCase();
+        if(k==='F12'||(e.ctrlKey&&(k==='U'||k==='S'||k==='C'))||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(k))){e.preventDefault();return false}
+    });
+    ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
+})();
+"""
+
+SEMRUSH_JS = """
+(function(){
+    var s=document.createElement('style');
+    s.textContent='#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo{display:none!important}';
+    document.head.appendChild(s);
+    var t=setInterval(function(){
+        var e=document.querySelector('#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo');
+        if(e){e.style.display='none';clearInterval(t)}
+    },500);
+})();
+"""
+
+
 def main():
-    # Hide console window (safety)
     try: ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
     except: pass
 
@@ -38,7 +60,6 @@ def main():
         msgbox("Missing --token or --server arguments", "Error")
         return 1
 
-    # Contact server to claim launch
     try:
         req = urllib.request.Request(f'{server}/api/claim-launch/{token}')
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -56,7 +77,6 @@ def main():
     cookies_raw = json.loads(data['cookies'])
     username = data['username']
 
-    # Auto-install Playwright if needed (silent)
     try:
         import playwright
     except ImportError:
@@ -64,7 +84,6 @@ def main():
                        capture_output=True, timeout=120)
         importlib.invalidate_caches()
 
-    # Auto-install Chromium if needed (silent, may take 1-2 min)
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
@@ -76,7 +95,6 @@ def main():
         subprocess.run([sys.executable, '-m', 'playwright', 'install', 'chromium'],
                        capture_output=True, timeout=300)
 
-    # Format cookies
     def root_domain(url):
         from urllib.parse import urlparse
         host = urlparse(url).netloc.split('@')[-1].split(':')[0]
@@ -107,7 +125,6 @@ def main():
             cookie['expires'] = int(float(exp))
         cookies.append(cookie)
 
-    # Open Chromium
     user_data_dir = tempfile.mkdtemp(prefix='st_')
     try:
         from playwright.sync_api import sync_playwright
@@ -121,37 +138,10 @@ def main():
                 no_viewport=True,
             )
             page = context.new_page()
-            page.add_init_script("""
-                (function(){
-                    document.addEventListener('contextmenu',function(e){e.preventDefault()});
-                    document.addEventListener('keydown',function(e){
-                        var k=e.key.toUpperCase();
-                        if(k==='F12'||(e.ctrlKey&&(k==='U'||k==='S'||k==='C'))||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(k))){e.preventDefault();return false}
-                    });
-                    ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
-                })();
-            """)
+            page.add_init_script(ANTI_THEFT_JS)
             if is_semrush:
-                page.add_init_script("""
-                    (function(){
-                        var t=setInterval(function(){
-                            var el=document.querySelector('#srf-header > div > div.srf-header__end > nav');
-                            if(el){el.style.display='none';clearInterval(t)}
-                        },500);
-                    })();
-                """)
+                page.add_init_script(SEMRUSH_JS)
 
-            page = context.new_page()
-            if is_semrush:
-                page.add_init_script("""
-                    (function(){
-                        var el = document.evaluate(
-                            '/html/body/div[1]/div[3]/div/header/div/div[3]',
-                            document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-                        ).singleNodeValue;
-                        if(el) el.style.display='none';
-                    })();
-                """)
             page.goto(url, wait_until='domcontentloaded', timeout=60000)
             context.add_cookies(cookies)
             page.reload(wait_until='domcontentloaded', timeout=60000)

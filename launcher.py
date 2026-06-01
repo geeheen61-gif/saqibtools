@@ -1,10 +1,17 @@
 """
 Saqib Tools Launcher — standalone script for the user's PC.
 Usage: python launcher.py --token <token> --server <server_url>
-
-Downloads and runs automatically via launcher.bat served from the domain.
 """
-import sys, json, urllib.request, subprocess, os, tempfile, importlib
+import sys, json, urllib.request, subprocess, os, tempfile, shutil, importlib
+
+try:
+    import ctypes
+    def msgbox(text, title="Saqib Tools"):
+        try: ctypes.windll.user32.MessageBoxW(0, text, title, 0 | 16)
+        except: pass
+except:
+    def msgbox(text, title="Saqib Tools"):
+        print(f"[{title}] {text}")
 
 
 def root_domain(url):
@@ -48,6 +55,48 @@ def format_cookies(raw, url):
     return result
 
 
+def ensure_playwright():
+    try:
+        import playwright
+    except ImportError:
+        print('[*] Installing Playwright package...')
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'playwright'], timeout=120)
+        importlib.invalidate_caches()
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            exe = p.chromium.executable_path
+            if not exe or not os.path.isfile(exe):
+                raise FileNotFoundError()
+    except:
+        print('[*] Installing Chromium browser (1-2 min)...')
+        subprocess.run([sys.executable, '-m', 'playwright', 'install', 'chromium'], timeout=300)
+
+
+ANTI_THEFT_JS = """
+(function(){
+    document.addEventListener('contextmenu',function(e){e.preventDefault()});
+    document.addEventListener('keydown',function(e){
+        var k=e.key.toUpperCase();
+        if(k==='F12'||(e.ctrlKey&&(k==='U'||k==='S'||k==='C'))||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(k))){e.preventDefault();return false}
+    });
+    ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
+})();
+"""
+
+SEMRUSH_JS = """
+(function(){
+    var s=document.createElement('style');
+    s.textContent='#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo{display:none!important}';
+    document.head.appendChild(s);
+    var t=setInterval(function(){
+        var e=document.querySelector('#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo');
+        if(e){e.style.display='none';clearInterval(t)}
+    },500);
+})();
+"""
+
+
 def main():
     if len(sys.argv) < 2:
         print('Usage: python launcher.py --token <token> --server <url>')
@@ -62,7 +111,7 @@ def main():
             server = sys.argv[i + 1]
 
     if not token or not server:
-        print('ERROR: Missing --token or --server arguments')
+        msgbox('Missing --token or --server arguments', 'Error')
         return 1
 
     print('[*] Contacting server...')
@@ -71,14 +120,11 @@ def main():
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
     except Exception as e:
-        print(f'[x] Failed to contact server: {e}')
-        print('    Make sure your internet is working and the server is online.')
-        input('Press Enter to exit...')
+        msgbox(f'Failed to contact server:\n{e}\n\nCheck your internet connection.', 'Connection Error')
         return 1
 
     if not data.get('ok'):
-        print(f'[x] Launch failed: {data.get("error", "unknown")}')
-        input('Press Enter to exit...')
+        msgbox(data.get('error', 'Launch failed'), 'Error')
         return 1
 
     tool_name = data.get('tool_name', 'Tool')
@@ -87,17 +133,13 @@ def main():
     username = data['username']
     print(f'[*] Launching: {tool_name}  (user: {username})')
 
-    # Auto-install playwright if missing
-    try:
-        import playwright
-        print('[*] Playwright package found')
-    except ImportError:
-        print('[*] Installing Playwright package...')
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'playwright'], timeout=120)
-        importlib.invalidate_caches()
-        print('[*] Playwright installed')
+    ensure_playwright()
 
-    # Auto-install chromium if missing
+    cookies = format_cookies(cookies_raw, url)
+    print(f'[*] Prepared {len(cookies)} cookies')
+
+    user_data_dir = tempfile.mkdtemp(prefix='st_')
+    try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             is_semrush = 'semrush.com' in url
@@ -112,39 +154,27 @@ def main():
                             'Chrome/124.0.0.0 Safari/537.36'),
             )
             page = context.new_page()
-            page.add_init_script("""
-                (function(){
-                    document.addEventListener('contextmenu',function(e){e.preventDefault()});
-                    document.addEventListener('keydown',function(e){
-                        var k=e.key.toUpperCase();
-                        if(k==='F12'||(e.ctrlKey&&(k==='U'||k==='S'||k==='C'))||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(k))){e.preventDefault();return false}
-                    });
-                    ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
-                })();
-            """)
+            page.add_init_script(ANTI_THEFT_JS)
             if is_semrush:
-                page.add_init_script("""
-                    (function(){
-                        var t=setInterval(function(){
-                            var el=document.querySelector('#srf-header > div > div.srf-header__end > nav');
-                            if(el){el.style.display='none';clearInterval(t)}
-                        },500);
-                    })();
-                """)
+                page.add_init_script(SEMRUSH_JS)
+
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
-        print(f'[*] Injected {len(context.cookies())} cookies')
-        page.reload(wait_until='domcontentloaded', timeout=60_000)
-        print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
+            page.reload(wait_until='domcontentloaded', timeout=60_000)
+            print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
 
-        page.wait_for_event('close', timeout=0)
-        context.close()
-
-    try:
-        import shutil
-        shutil.rmtree(user_data_dir, ignore_errors=True)
-    except Exception:
-        pass
+            page.wait_for_event('close', timeout=0)
+            context.close()
+    except Exception as e:
+        msgbox(f'Error launching browser:\n{e}', 'Error')
+        import traceback
+        traceback.print_exc()
+        return 1
+    finally:
+        try:
+            shutil.rmtree(user_data_dir, ignore_errors=True)
+        except Exception:
+            pass
 
     print('[+] Session ended.')
     return 0

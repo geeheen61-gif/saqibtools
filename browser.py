@@ -151,9 +151,12 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             if 'semrush.com' in url:
                 page.add_init_script("""
                     (function(){
+                        var s=document.createElement('style');
+                        s.textContent='#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo{display:none!important}';
+                        document.head.appendChild(s);
                         var t=setInterval(function(){
-                            var el=document.querySelector('#srf-header > div > div.srf-header__end > nav');
-                            if(el){el.style.display='none';clearInterval(t)}
+                            var e=document.querySelector('#srf-header,.srf-header,.srf-upgrade-banner,.srf-promo');
+                            if(e){e.style.display='none';clearInterval(t)}
                         },500);
                     })();
                 """)
