@@ -1028,7 +1028,9 @@ def launch_download(token):
     if b64:
         bat_parts.append(f'if not exist "launcher.py" (')
         bat_parts.append(f'    echo Extracting launcher script...')
-        bat_parts.append(f"    powershell -Command \"&{{$b='{b64}';$d=[Convert]::FromBase64String($b);[IO.File]::WriteAllBytes('launcher.py',$d)}}\"")
+        bat_parts.append(f'    echo {b64} >launcher.b64')
+        bat_parts.append(f'    certutil -decode launcher.b64 launcher.py >nul 2>&1')
+        bat_parts.append(f'    del launcher.b64 >nul 2>&1')
         bat_parts.append(f'    if not exist "launcher.py" (')
         bat_parts.append(f'        echo Failed to create launcher.py')
         bat_parts.append(f'        pause')
