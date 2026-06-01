@@ -76,7 +76,7 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download', 'download_launcher'):
+        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
@@ -1003,22 +1003,6 @@ def launch_mobile(token):
                            tool_url=lt.url)
 
 
-@app.route('/download-launcher/<token>')
-def download_launcher(token):
-    lt = LaunchToken.query.filter_by(token=token).first()
-    if not lt:
-        return 'Invalid or expired launch token.', 404
-    launcher_path = os.path.join(os.path.dirname(__file__), 'static', 'launcher.py')
-    if not os.path.isfile(launcher_path):
-        return 'Launcher script not found.', 500
-    with open(launcher_path, 'rb') as f:
-        content = f.read()
-    response = Response(content, mimetype='text/x-python')
-    response.headers['Content-Disposition'] = 'attachment; filename="launcher.py"'
-    response.headers['Content-Length'] = str(len(content))
-    return response
-
-
 @app.route('/launch-download/<token>')
 def launch_download(token):
     lt = LaunchToken.query.filter_by(token=token).first()
@@ -1028,23 +1012,16 @@ def launch_download(token):
     server_url = request.host_url.rstrip('/')
     tool_name = lt.tool_name
     safe_name = tool_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
-    dl_url = f'{server_url}/download-launcher/{token}'
 
     bat_parts = []
     bat_parts.append(f'@echo off')
     bat_parts.append(f'title Saqib Tools - {tool_name}')
     bat_parts.append(f'cd /d "%~dp0"')
     bat_parts.append(f'')
-    bat_parts.append(f'REM Download the Python launcher script')
+    bat_parts.append(f'REM Download launcher.py from server if missing')
     bat_parts.append(f'if not exist "launcher.py" (')
     bat_parts.append(f'    echo Downloading launcher script...')
-    bat_parts.append(f"    powershell -Command \"$u='{dl_url}';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;try{{$d=Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 30;[IO.File]::WriteAllBytes('launcher.py',$d.Content)}}catch{{exit 1}}\"")
-    bat_parts.append(f'    if errorlevel 1 (')
-    bat_parts.append(f'        echo Failed to download launcher.py')
-    bat_parts.append(f'        echo Check your internet connection and try again.')
-    bat_parts.append(f'        pause')
-    bat_parts.append(f'        exit /b 1')
-    bat_parts.append(f'    )')
+    bat_parts.append(f'    powershell -Command "Invoke-WebRequest -Uri ''{server_url}/static/launcher.py'' -OutFile ''launcher.py''" >nul 2>&1')
     bat_parts.append(f')')
     bat_parts.append(f'')
     bat_parts.append(f'REM 1) Portable bundled Python')
@@ -1054,13 +1031,16 @@ def launch_download(token):
     bat_parts.append(f')')
     bat_parts.append(f'')
     bat_parts.append(f'REM 2) System Python')
-    bat_parts.append(f'where python >nul 2>&1')
-    bat_parts.append(f'if %ERRORLEVEL% == 0 (')
-    bat_parts.append(f'    start "" pythonw "launcher.py" --token {token} --server {server_url}')
+    bat_parts.append(f'if exist "launcher.py" (')
+    bat_parts.append(f'    python launcher.py --token {token} --server {server_url}')
+    bat_parts.append(f'    echo.')
+    bat_parts.append(f'    pause')
     bat_parts.append(f'    exit /b 0')
     bat_parts.append(f')')
     bat_parts.append(f'')
-    bat_parts.append(f'echo Python not found. Install Python 3.9+ and try again.')
+    bat_parts.append(f'echo Could not download launcher.py.')
+    bat_parts.append(f'echo Make sure you have Python and Playwright installed, then visit:')
+    bat_parts.append(f'echo {server_url}')
     bat_parts.append(f'pause')
     bat_content = '\r\n'.join(bat_parts)
 
