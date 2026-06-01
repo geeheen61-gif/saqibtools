@@ -112,11 +112,23 @@ def main():
                             'Chrome/124.0.0.0 Safari/537.36'),
             )
             page = context.new_page()
+            page.add_init_script("""
+                (function(){
+                    document.addEventListener('contextmenu',function(e){e.preventDefault()});
+                    document.addEventListener('keydown',function(e){
+                        var k=e.key.toUpperCase();
+                        if(k==='F12'||(e.ctrlKey&&(k==='U'||k==='S'||k==='C'))||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(k))){e.preventDefault();return false}
+                    });
+                    ['log','warn','error','info','debug','table','dir','trace'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
+                })();
+            """)
             if is_semrush:
                 page.add_init_script("""
                     (function(){
-                        var el = document.querySelector('#srf-header > div > div.srf-header__end > nav');
-                        if(el) el.style.display='none';
+                        var t=setInterval(function(){
+                            var el=document.querySelector('#srf-header > div > div.srf-header__end > nav');
+                            if(el){el.style.display='none';clearInterval(t)}
+                        },500);
                     })();
                 """)
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)

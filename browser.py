@@ -151,8 +151,10 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             if 'semrush.com' in url:
                 page.add_init_script("""
                     (function(){
-                        var el = document.querySelector('#srf-header > div > div.srf-header__end > nav');
-                        if(el) el.style.display='none';
+                        var t=setInterval(function(){
+                            var el=document.querySelector('#srf-header > div > div.srf-header__end > nav');
+                            if(el){el.style.display='none';clearInterval(t)}
+                        },500);
                     })();
                 """)
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
