@@ -268,12 +268,8 @@ def _open_tool(token, server):
         try:
             with sync_playwright() as p:
                 is_semrush = 'semrush.com' in url
-                tool_args = ['--disable-blink-features=AutomationControlled',
+                tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled',
                              '--no-sandbox', '--disable-gpu']
-                if is_semrush:
-                    tool_args.append('--kiosk')
-                else:
-                    tool_args.append('--start-maximized')
                 context = p.chromium.launch_persistent_context(
                     profile_dir, headless=False,
                     executable_path=chromium_path,
@@ -285,10 +281,7 @@ def _open_tool(token, server):
                 if is_semrush:
                     page.add_init_script("""
                         (function(){
-                            var el = document.evaluate(
-                                '/html/body/div[1]/div[3]/div/header/div/div[3]',
-                                document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-                            ).singleNodeValue;
+                            var el = document.querySelector('#srf-header > div > div.srf-header__end > nav');
                             if(el) el.style.display='none';
                         })();
                     """)

@@ -113,25 +113,21 @@ def main():
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             is_semrush = 'semrush.com' in url
-            tool_args = ['--disable-blink-features=AutomationControlled', '--no-sandbox']
-            if is_semrush:
-                tool_args.append('--kiosk')
-            else:
-                tool_args.append('--start-maximized')
+            tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled', '--no-sandbox']
             context = p.chromium.launch_persistent_context(
                 user_data_dir, headless=False,
                 args=tool_args,
                 ignore_default_args=['--enable-automation'],
                 no_viewport=True,
             )
-            # Anti-theft protections (NOTA: document.cookie is NOT blocked — the target site's JS needs to read it for auth)
-            context.add_init_script("""
-                document.addEventListener('contextmenu',function(e){e.preventDefault()});
-                document.addEventListener('keydown',function(e){
-                    if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C','K'].includes(e.key))||(e.ctrlKey&&['U','S'].includes(e.key))){e.preventDefault();return false}
-                });
-                ['log','warn','error','info','debug'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});
-            """)
+            page = context.new_page()
+            if is_semrush:
+                page.add_init_script("""
+                    (function(){
+                        var el = document.querySelector('#srf-header > div > div.srf-header__end > nav');
+                        if(el) el.style.display='none';
+                    })();
+                """)
 
             page = context.new_page()
             if is_semrush:
