@@ -1013,16 +1013,28 @@ def launch_download(token):
     tool_name = lt.tool_name
     safe_name = tool_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
 
+    # Read and base64-encode the Python launcher
+    launcher_path = os.path.join(os.path.dirname(__file__), 'static', 'launcher.py')
+    b64 = ''
+    if os.path.isfile(launcher_path):
+        with open(launcher_path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode()
+
     bat_parts = []
     bat_parts.append(f'@echo off')
     bat_parts.append(f'title Saqib Tools - {tool_name}')
     bat_parts.append(f'cd /d "%~dp0"')
     bat_parts.append(f'')
-    bat_parts.append(f'REM Download launcher.py from server if missing')
-    bat_parts.append(f'if not exist "launcher.py" (')
-    bat_parts.append(f'    echo Downloading launcher script...')
-    bat_parts.append(f'    powershell -Command "Invoke-WebRequest -Uri ''{server_url}/static/launcher.py'' -OutFile ''launcher.py''" >nul 2>&1')
-    bat_parts.append(f')')
+    if b64:
+        bat_parts.append(f'if not exist "launcher.py" (')
+        bat_parts.append(f'    echo Extracting launcher script...')
+        bat_parts.append(f"    powershell -Command \"&{{$b='{b64}';$d=[Convert]::FromBase64String($b);[IO.File]::WriteAllBytes('launcher.py',$d)}}\"")
+        bat_parts.append(f'    if not exist "launcher.py" (')
+        bat_parts.append(f'        echo Failed to create launcher.py')
+        bat_parts.append(f'        pause')
+        bat_parts.append(f'        exit /b 1')
+        bat_parts.append(f'    )')
+        bat_parts.append(f')')
     bat_parts.append(f'')
     bat_parts.append(f'REM 1) Portable bundled Python')
     bat_parts.append(f'if exist "python\\pythonw.exe" (')
@@ -1038,9 +1050,7 @@ def launch_download(token):
     bat_parts.append(f'    exit /b 0')
     bat_parts.append(f')')
     bat_parts.append(f'')
-    bat_parts.append(f'echo Could not download launcher.py.')
-    bat_parts.append(f'echo Make sure you have Python and Playwright installed, then visit:')
-    bat_parts.append(f'echo {server_url}')
+    bat_parts.append(f'echo Could not extract or find launcher.py.')
     bat_parts.append(f'pause')
     bat_content = '\r\n'.join(bat_parts)
 
