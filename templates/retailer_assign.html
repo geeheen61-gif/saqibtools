@@ -200,7 +200,6 @@
           {% set days_left = (expiry - now).days %}
           {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
         {% endif %}
-        {% set credit_limit = assignment.credit_limit if assignment else None %}
         <div class="tool-assign-row" style="{{ 'opacity:0.5' if is_expired else '' }}">
           <input type="checkbox" name="tool_ids" value="{{ tool.id }}"
             {{ 'checked' if checked else '' }}
@@ -217,13 +216,7 @@
           <input type="date" name="custom_date_{{ tool.id }}"
                  class="custom-date-input" style="display:none"
                  onchange="saveForm(this)" {{ 'disabled' if is_expired else '' }}
-                 value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
-          <input type="number" name="credit_limit_{{ tool.id }}" min="0"
-                 class="credit-input"
-                 style="width:100px; margin-left:10px"
-                 value="{{ credit_limit if credit_limit is not none else '' }}"
-                 placeholder="Credits/mo"
-                 {{ 'disabled' if is_expired else '' }}>
+                  value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
           {% if expiry %}
           <span class="expiry-tag {{ 'expired' if is_expired else ('expiry-warn' if days_left <= 7 else 'expiry-ok') }}">
             {% if is_expired %}Expired {{ expiry.strftime('%b %d') }}{% else %}{{ days_left }}d{% endif %}

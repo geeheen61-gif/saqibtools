@@ -329,7 +329,6 @@ def admin_add_user():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
     subscription_days = request.form.get('subscription_days', '30').strip()
-    credit_limit = request.form.get('credit_limit', '100').strip()
 
     if not username or not password:
         flash('Username and password required.', 'error')
@@ -341,13 +340,10 @@ def admin_add_user():
 
     try:
         subscription_days = int(subscription_days)
-        credit_limit = int(credit_limit)
         if subscription_days < 1 or subscription_days > 365:
             raise ValueError
-        if credit_limit < 0:
-            raise ValueError
     except ValueError:
-        flash('Invalid subscription days or credit limit.', 'error')
+        flash('Invalid subscription days.', 'error')
         return redirect(url_for('admin_users'))
 
     from datetime import datetime, timezone, timedelta
@@ -357,7 +353,6 @@ def admin_add_user():
         username=username,
         password=hashed,
         role='user',
-        monthly_credit_limit=credit_limit
     )
     
     # Set subscription expiration
@@ -367,7 +362,7 @@ def admin_add_user():
     
     db.session.add(user)
     db.session.commit()
-    flash(f'User "{username}" created with {credit_limit} monthly credits.', 'success')
+    flash(f'User "{username}" created.', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -412,9 +407,6 @@ def admin_user_info(uid):
     return jsonify({
         'id': user.id,
         'username': user.username,
-        'subscription_days': subscription_days,
-        'credit_limit': user.monthly_credit_limit,
-        'credits_used': user.credits_used_current_month,
         'is_active': user.is_active
     })
 
@@ -438,31 +430,15 @@ def admin_reset_password(uid):
 def admin_edit_user(uid):
     user = User.query.get_or_404(uid)
     subscription_days = request.form.get('subscription_days', '').strip()
-    credit_limit = request.form.get('credit_limit', '').strip()
 
     if subscription_days:
         try:
             subscription_days = int(subscription_days)
             if subscription_days < 0:
                 raise ValueError
-            # Note: Subscription expiration is handled via UserTool assignments
-            # For now, we'll store a note or this could be extended to add a subscription tool
             flash(f'Subscription duration updated for "{user.username}".', 'info')
         except ValueError:
             flash('Invalid subscription days.', 'error')
-            return redirect(url_for('admin_users'))
-
-    if credit_limit:
-        try:
-            credit_limit = int(credit_limit)
-            if credit_limit < 0:
-                raise ValueError
-            user.monthly_credit_limit = credit_limit
-            # Reset current usage if new limit is lower than current usage
-            if user.credits_used_current_month > credit_limit:
-                user.credits_used_current_month = credit_limit
-        except ValueError:
-            flash('Invalid credit limit.', 'error')
             return redirect(url_for('admin_users'))
 
     db.session.commit()
@@ -485,22 +461,11 @@ def admin_assign():
         if ut.expires_at:
             tool_expiry.setdefault(ut.user_id, {})[ut.tool_id] = ut.expires_at
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    user_credits_used = {}
-    user_tool_credits_used = {}
-    usage_logs = UsageLog.query.filter(UsageLog.opened_at >= month_start).all()
-    for log in usage_logs:
-        user_credits_used[log.user_id] = user_credits_used.get(log.user_id, 0) + 1
-        key = (log.user_id, log.tool_id)
-        user_tool_credits_used[key] = user_tool_credits_used.get(key, 0) + 1
     return render_template('admin_assign.html',
                            users=users, tools=tools,
                            assignments=assignments,
                            tool_expiry=tool_expiry,
-                           assignment_data=assignment_data,
-                           user_credits_used=user_credits_used,
-                           user_tool_credits_used=user_tool_credits_used,
-                           month_start=month_start)
+                           assignment_data=assignment_data)
 
 
 @app.route('/admin/assign/update', methods=['POST'])
@@ -528,16 +493,7 @@ def admin_assign_update():
                         expires_at = expires_at.replace(tzinfo=None)
                 except ValueError:
                     pass
-        credit_limit = request.form.get(f'credit_limit_{tid}', '').strip()
-        credit_limit_value = None
-        if credit_limit:
-            try:
-                credit_limit_value = int(credit_limit)
-                if credit_limit_value < 0:
-                    raise ValueError
-            except ValueError:
-                credit_limit_value = None
-        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at, credit_limit=credit_limit_value))
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
     db.session.commit()
 
     user = db.session.get(User, user_id)
@@ -777,16 +733,7 @@ def retailer_assign_update():
                         expires_at = expires_at.replace(tzinfo=None)
                 except ValueError:
                     pass
-        credit_limit = request.form.get(f'credit_limit_{tid}', '').strip()
-        credit_limit_value = None
-        if credit_limit:
-            try:
-                credit_limit_value = int(credit_limit)
-                if credit_limit_value < 0:
-                    raise ValueError
-            except ValueError:
-                credit_limit_value = None
-        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at, credit_limit=credit_limit_value))
+        db.session.add(UserTool(user_id=user_id, tool_id=tid, expires_at=expires_at))
     db.session.commit()
 
     if request.args.get('ajax') == '1':
@@ -896,19 +843,9 @@ def user_dashboard():
     tool_expiry = {}
     for r in rows:
         tool_expiry[r.tool_id] = r.expires_at
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    user_tool_credits_used = {}
-    usage_logs = UsageLog.query.filter(
-        UsageLog.user_id == uid,
-        UsageLog.opened_at >= month_start
-    ).all()
-    for log in usage_logs:
-        key = (log.user_id, log.tool_id)
-        user_tool_credits_used[key] = user_tool_credits_used.get(key, 0) + 1
     return render_template('user_dashboard.html', tools=tools,
                            tool_expiry=tool_expiry,
                            tool_assignments=tool_assignments,
-                           user_tool_credits_used=user_tool_credits_used,
                            now=now)
 
 
@@ -939,19 +876,7 @@ def use_tool(tid):
 
     on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
 
-    # Skip credit & subscription checks on Render so users never see limit errors
     if not on_render:
-        if assignment.credit_limit is not None:
-            if assignment.credit_limit == 0:
-                return jsonify({'ok': False, 'msg': 'Access denied: credit limit set to 0.'})
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            tool_usage_count = (UsageLog.query
-                                .filter_by(user_id=uid, tool_id=tid)
-                                .filter(UsageLog.opened_at >= month_start)
-                                .count())
-            if tool_usage_count >= assignment.credit_limit:
-                return jsonify({'ok': False, 'msg': 'Tool credit limit reached for this month. Please contact administrator to increase access.'})
-
         if user.subscription_expires_at and now > user.subscription_expires_at:
             return jsonify({'ok': False, 'msg': 'Subscription has expired. Please renew to continue using tools.'})
 
@@ -962,7 +887,6 @@ def use_tool(tid):
             token=token, url=tool.url, cookies=tool.cookies,
             username=session['username'], tool_name=tool.name,
         ))
-        user.credits_used_current_month += 1
         db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({
@@ -976,7 +900,6 @@ def use_tool(tid):
             token=token, url=tool.url, cookies=tool.cookies,
             username=session['username'], tool_name=tool.name,
         ))
-        user.credits_used_current_month += 1
         db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({
@@ -987,7 +910,6 @@ def use_tool(tid):
     # Local mode: auto-installs Playwright+Chromium if missing, then opens browser
     result = open_tool(tool.url, tool.cookies, session['username'])
     if result.get('ok'):
-        user.credits_used_current_month += 1
         db.session.add(UsageLog(user_id=uid, tool_id=tid))
         db.session.commit()
         return jsonify({'ok': True, 'mode': 'local', 'msg': 'Browser opened on your desktop.'})
@@ -1144,18 +1066,13 @@ def seed():
     import sqlalchemy as sa
     insp = sa.inspect(db.engine)
 
-    # Migrate: add expires_at and credit_limit columns if missing
+    # Migrate: add expires_at column if missing
     cols_ut = [c['name'] for c in insp.get_columns('user_tools')]
     if 'expires_at' not in cols_ut:
         with db.engine.connect() as conn:
             conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN expires_at TIMESTAMP;'))
             conn.commit()
         print('[MIGRATION] Added expires_at to user_tools')
-    if 'credit_limit' not in cols_ut:
-        with db.engine.connect() as conn:
-            conn.execute(sa.text('ALTER TABLE user_tools ADD COLUMN credit_limit INTEGER;'))
-            conn.commit()
-        print('[MIGRATION] Added credit_limit to user_tools')
 
     # Migrate: add created_by column if missing
     cols_u = [c['name'] for c in insp.get_columns('users')]
@@ -1170,24 +1087,6 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMP;'))
             conn.commit()
         print('[MIGRATION] Added subscription_expires_at to users')
-
-    if 'monthly_credit_limit' not in cols_u:
-        with db.engine.connect() as conn:
-            conn.execute(sa.text('ALTER TABLE users ADD COLUMN monthly_credit_limit INTEGER DEFAULT 100;'))
-            conn.commit()
-        print('[MIGRATION] Added monthly_credit_limit to users')
-
-    if 'credits_used_current_month' not in cols_u:
-        with db.engine.connect() as conn:
-            conn.execute(sa.text('ALTER TABLE users ADD COLUMN credits_used_current_month INTEGER DEFAULT 0;'))
-            conn.commit()
-        print('[MIGRATION] Added credits_used_current_month to users')
-
-    if 'last_credit_reset' not in cols_u:
-        with db.engine.connect() as conn:
-            conn.execute(sa.text('ALTER TABLE users ADD COLUMN last_credit_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;'))
-            conn.commit()
-        print('[MIGRATION] Added last_credit_reset to users')
 
     if 'session_token' not in cols_u:
         with db.engine.connect() as conn:

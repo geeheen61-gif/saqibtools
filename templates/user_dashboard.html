@@ -158,35 +158,7 @@
       <i class="fas fa-link"></i>
       <span>{{ tool.url }}</span>
     </div>
-  {% set assignment = tool_assignments.get(tool.id) %}
-  {% set credit_blocked = False %}
-  {% set credit_reason = '' %}
-  {% if assignment and assignment.credit_limit is not none %}
-    {% if assignment.credit_limit == 0 %}
-      {% set credit_blocked = True %}
-      {% set credit_reason = 'No access (credit limit = 0)' %}
-    {% else %}
-      {% set tool_used = user_tool_credits_used.get((current_user.id, tool.id), 0) %}
-      {% if tool_used >= assignment.credit_limit %}
-        {% set credit_blocked = True %}
-        {% set credit_reason = 'Credit limit reached for this month' %}
-      {% endif %}
-    {% endif %}
-  {% endif %}
-  {% if assignment and assignment.credit_limit is not none and assignment.credit_limit > 0 %}
-    <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--slate-500);">
-      <strong>Credit limit:</strong> {{ assignment.credit_limit }} credits/month
-    </div>
-    {% elif assignment and assignment.credit_limit == 0 %}
-    <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--danger);">
-      <i class="fas fa-ban"></i> <strong>No access</strong> (credit limit = 0)
-    </div>
-    {% elif current_user.monthly_credit_limit is not none %}
-    {% set remaining = current_user.monthly_credit_limit - current_user.credits_used_current_month %}
-    <div class="tool-meta" style="margin-bottom:10px;font-size:12px;color:var(--slate-500);">
-      <strong>Credits left:</strong> {{ remaining }} / {{ current_user.monthly_credit_limit }}
-    </div>
-    {% endif %}
+    {% set assignment = tool_assignments.get(tool.id) %}
     {% if expiry %}
     <div class="expiry-tag {{ 'expired-tag' if is_expired else ('expiry-warn' if (expiry - now).days <= 7 else 'expiry-ok') }}">
       {% if is_expired %}
@@ -203,10 +175,6 @@
     {% if is_expired %}
     <button class="btn btn-primary launch-btn btn-disabled" disabled>
       <i class="fas fa-lock"></i> <span class="btn-text">Subscription Expired</span>
-    </button>
-    {% elif credit_blocked %}
-    <button class="btn btn-primary launch-btn btn-disabled" disabled>
-      <i class="fas fa-ban"></i> <span class="btn-text">{{ credit_reason }}</span>
     </button>
     {% else %}
     <button class="btn btn-primary launch-btn" data-id="{{ tool.id }}" data-name="{{ tool.name|e }}">

@@ -485,12 +485,6 @@
           <div class="lbl">Expired</div>
         </div>
         {% endif %}
-        {% set used = user_credits_used.get(user.id, 0) %}
-        {% set limit = user.monthly_credit_limit or 0 %}
-        <div class="user-stat">
-          <div class="num {{ 'red' if limit > 0 and used >= limit else 'orange' if limit > 0 and used >= limit * 0.8 else 'green' }}">{{ used }}/{{ limit or '∞' }}</div>
-          <div class="lbl">Credits</div>
-        </div>
         <i class="fas fa-chevron-down" style="color:#94a3b8;font-size:12px;transition:transform 0.2s"></i>
       </div>
     </div>
@@ -506,7 +500,6 @@
           {% set days_left = (expiry - now).days %}
           {% if days_left <= 7 %}{% set dur = 'week' %}{% elif days_left <= 31 %}{% set dur = 'month' %}{% else %}{% set dur = 'year' %}{% endif %}
         {% endif %}
-        {% set credit_limit = assignment.credit_limit if assignment else None %}
         {% set cat_slug = tool.category.lower().replace(' ', '-') %}
         <div class="tool-item {{ 'expired' if is_expired else '' }}" data-tool-id="{{ tool.id }}">
           <div class="cb-wrap">
@@ -533,16 +526,6 @@
             <input type="date" name="custom_date_{{ tool.id }}"
                    class="custom-date-input" style="display:none"
                    value="{{ expiry.strftime('%Y-%m-%d') if dur == 'custom' and expiry else '' }}">
-            <input type="number" name="credit_limit_{{ tool.id }}" min="0"
-                   class="credit-input"
-                   style="width:100px; margin-left:10px"
-                   value="{{ credit_limit if credit_limit is not none else '' }}"
-                   placeholder="Credits/mo"
-                   {{ 'disabled' if is_expired else '' }}>
-            {% set tool_used = user_tool_credits_used.get((user.id, tool.id), 0) %}
-            {% if tool_used > 0 %}
-            <span class="dur-badge {{ 'dur-red' if credit_limit and tool_used >= credit_limit else 'dur-orange' }}"><i class="fas fa-bolt"></i> {{ tool_used }} used</span>
-            {% endif %}
             {% if checked and expiry %}
               {% set remaining = (expiry - now).days if expiry > now else 0 %}
               {% if is_expired %}
