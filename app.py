@@ -1219,6 +1219,7 @@ def mobile_tools():
             'url': r.tool.url or '',
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
+            'image': r.tool.image or '',
         })
     return jsonify({'ok': True, 'tools': tools, 'user_id': user.id, 'total': len(tools)})
 
