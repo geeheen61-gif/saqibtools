@@ -150,8 +150,18 @@
                   <form method="POST" action="/admin/emails/manual-notify/{{ u.id }}" style="display:inline">
                     <button type="submit" class="user-action-btn" title="Send Expiry Notification Email"><i class="fas fa-envelope"></i></button>
                   </form>
+                  <form method="POST" action="/admin/users/reset-password/{{ u.id }}" style="display:inline" id="pwform-{{ u.id }}">
+                    <input type="hidden" name="new_password" id="pwinput-{{ u.id }}">
+                    <button type="button" class="user-action-btn" onclick="resetUserPw({{ u.id }}, '{{ u.username }}')" title="Change Password">
+                      <i class="fas fa-lock"></i>
+                    </button>
+                  </form>
+                  <form method="POST" action="/admin/users/logout/{{ u.id }}" style="display:inline" onsubmit="return confirm('Force logout session for user {{ u.username }}?')">
+                    <button type="submit" class="user-action-btn" title="Force Logout Session">
+                      <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                  </form>
                  <form method="POST" action="/admin/users/delete/{{ u.id }}" style="display:inline" onsubmit="return confirm('Permanently delete user {{ u.username }}?')">
-       
                    <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 10px;height:32px" title="Delete User"><i class="fas fa-trash"></i></button>
                  </form>
                </div>
@@ -202,6 +212,14 @@
           b.className = 'badge ' + (d.active ? 'badge-on' : 'badge-off');
           b.innerHTML = '<i class="fas fa-' + (d.active ? 'check-circle' : 'times-circle') + '"></i> ' + (d.active ? 'Active' : 'Blocked');
         });
+    }
+
+    function resetUserPw(id, username) {
+      var pw = prompt('Enter new password for user ' + username + ':');
+      if (pw && pw.trim()) {
+        document.getElementById('pwinput-' + id).value = pw.trim();
+        document.getElementById('pwform-' + id).submit();
+      }
     }
 
     function filterTable() {

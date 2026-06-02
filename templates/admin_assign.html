@@ -554,7 +554,18 @@
           </div>
         </div>
         {% endfor %}
-        <div class="card-footer-actions">
+        <div class="card-footer-actions" style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn-save-outline" onclick="assignResetPw({{ user.id }}, '{{ user.username }}')" title="Change Password" style="padding: 9px 14px; border-radius: 12px;">
+              <i class="fas fa-lock"></i> Password
+            </button>
+            <button type="button" class="btn-save-outline" onclick="submitUserAction('/admin/users/logout/{{ user.id }}', 'Force logout session for user {{ user.username }}?')" title="Logout Session" style="padding: 9px 14px; border-radius: 12px;">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+            <button type="button" class="btn-save-outline" onclick="submitUserAction('/admin/users/delete/{{ user.id }}', 'Permanently delete user {{ user.username }}?')" title="Delete User" style="padding: 9px 14px; border-radius: 12px; border-color: rgba(239, 68, 68, 0.4); color: #F87171;">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
           <button type="submit" class="btn-save save-user-btn" data-username="{{ user.username }}">
             <i class="fas fa-save"></i> Save Changes
           </button>
@@ -610,6 +621,35 @@
       var name = card.getAttribute('data-username');
       card.style.display = name && name.toLowerCase().includes(q) ? '' : 'none';
     });
+  }
+
+  function submitUserAction(url, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) {
+      return;
+    }
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function assignResetPw(id, username) {
+    var pw = prompt('Enter new password for user ' + username + ':');
+    if (pw && pw.trim()) {
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/admin/users/reset-password/' + id;
+      
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'new_password';
+      input.value = pw.trim();
+      form.appendChild(input);
+      
+      document.body.appendChild(form);
+      form.submit();
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function() {

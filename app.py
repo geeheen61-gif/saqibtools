@@ -420,12 +420,26 @@ def admin_add_user():
 @admin_required
 def admin_delete_user(uid):
     user = User.query.get_or_404(uid)
+    PasswordReset.query.filter_by(user_id=uid).delete()
     UsageLog.query.filter_by(user_id=uid).delete()
     UserTool.query.filter_by(user_id=uid).delete()
     db.session.delete(user)
     db.session.commit()
     flash(f'User "{user.username}" deleted.', 'success')
-    return redirect(url_for('admin_users'))
+    referer = request.referrer or url_for('admin_users')
+    return redirect(referer)
+
+
+@app.route('/admin/users/logout/<int:uid>', methods=['POST'])
+@admin_required
+def admin_logout_user(uid):
+    user = User.query.get_or_404(uid)
+    user.session_token = None
+    user.api_token = None
+    db.session.commit()
+    flash(f'Logged out session for "{user.username}".', 'success')
+    referer = request.referrer or url_for('admin_users')
+    return redirect(referer)
 
 
 @app.route('/admin/users/toggle/<int:uid>', methods=['POST'])
@@ -468,11 +482,13 @@ def admin_reset_password(uid):
     new_pass = request.form.get('new_password', '').strip()
     if not new_pass:
         flash('Password cannot be empty.', 'error')
-        return redirect(url_for('admin_users'))
+        referer = request.referrer or url_for('admin_users')
+        return redirect(referer)
     user.password = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
     db.session.commit()
     flash(f'Password reset for "{user.username}".', 'success')
-    return redirect(url_for('admin_users'))
+    referer = request.referrer or url_for('admin_users')
+    return redirect(referer)
 
 
 @app.route('/admin/users/edit/<int:uid>', methods=['POST'])
@@ -699,6 +715,7 @@ def retailer_delete_user(uid):
     if user.created_by != session['uid']:
         flash('Access denied.', 'error')
         return redirect(url_for('retailer_users'))
+    PasswordReset.query.filter_by(user_id=uid).delete()
     UsageLog.query.filter_by(user_id=uid).delete()
     UserTool.query.filter_by(user_id=uid).delete()
     db.session.delete(user)
