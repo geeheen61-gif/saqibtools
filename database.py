@@ -76,3 +76,31 @@ class EmailLog(db.Model):
     recipient   = db.Column(db.String(200), nullable=False)
     sent_at     = db.Column(db.DateTime, default=_utcnow)
     status      = db.Column(db.String(20), default='sent')
+
+
+class PasswordReset(db.Model):
+    __tablename__ = 'password_resets'
+    id          = db.Column(db.Integer, primary_key=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    otp         = db.Column(db.String(6), nullable=False)
+    expires_at  = db.Column(db.DateTime, nullable=False)
+    used        = db.Column(db.Boolean, default=False)
+    created_at  = db.Column(db.DateTime, default=_utcnow)
+
+
+class Bundle(db.Model):
+    __tablename__ = 'bundles'
+    id          = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.String(100), nullable=False)
+    created_at  = db.Column(db.DateTime, default=_utcnow)
+    tools       = db.relationship('BundleTool', back_populates='bundle',
+                                  cascade='all, delete-orphan')
+
+
+class BundleTool(db.Model):
+    __tablename__ = 'bundle_tools'
+    id          = db.Column(db.Integer, primary_key=True)
+    bundle_id   = db.Column(db.Integer, db.ForeignKey('bundles.id'), nullable=False)
+    tool_id     = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
+    bundle      = db.relationship('Bundle', back_populates='tools')
+    tool        = db.relationship('Tool')

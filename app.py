@@ -8,7 +8,7 @@ from functools import wraps
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash, Response)
 
-from database import db, User, Tool, UserTool, UsageLog, LaunchToken, EmailLog
+from database import db, User, Tool, UserTool, UsageLog, LaunchToken, EmailLog, PasswordReset, Bundle, BundleTool
 import base64
 import smtplib
 import threading
@@ -80,10 +80,12 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_launch'):
+        if request.endpoint in ('static', 'login', 'logout', 'forgot_password', 'reset_password', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_launch'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
+            if user and user.role == 'admin':
+                return
             session.clear()
             from flask import redirect
             return redirect('/login')
@@ -165,7 +167,9 @@ def login():
         password = request.form.get('password', '').encode()
         user = User.query.filter_by(username=username).first()
         if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
-            if user.session_token or user.api_token:
+            if user.role != 'admin' and (user.session_token or user.api_token):
+                if user.session_token and session.get('session_token') == user.session_token:
+                    return redirect(url_for('home'))
                 flash('This account is already logged in from another device. Logout first.', 'error')
                 return render_template('login.html')
             tok = secrets.token_hex(32)
@@ -190,6 +194,69 @@ def logout():
             db.session.commit()
     session.clear()
     return redirect(url_for('login'))
+
+
+# ═══════════════════════════════════════════════════════════
+# PASSWORD RESET
+# ═══════════════════════════════════════════════════════════
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash('No account found with that username.', 'error')
+            return render_template('forgot_password.html')
+        otp = f'{secrets.randbelow(900000) + 100000}'
+        expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
+        PasswordReset.query.filter_by(user_id=user.id, used=False).delete()
+        db.session.add(PasswordReset(user_id=user.id, otp=otp, expires_at=expires))
+        db.session.commit()
+        send_email_async(
+            subject='Password Reset OTP - Saqib SEO Tools Agency',
+            html_body=render_template('emails/reset_otp.html', otp=otp, user=user),
+            recipient=user.username,
+        )
+        session['reset_user_id'] = user.id
+        flash('An OTP has been sent to your email. It expires in 10 minutes.', 'success')
+        return redirect(url_for('reset_password'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    user_id = session.get('reset_user_id')
+    if not user_id:
+        return redirect(url_for('forgot_password'))
+    user = db.session.get(User, user_id)
+    if not user:
+        session.pop('reset_user_id', None)
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        otp = request.form.get('otp', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        reset = PasswordReset.query.filter_by(
+            user_id=user_id, otp=otp, used=False
+        ).filter(PasswordReset.expires_at > datetime.now(timezone.utc).replace(tzinfo=None)).first()
+        if not reset:
+            flash('Invalid or expired OTP.', 'error')
+            return render_template('reset_password.html')
+        if len(password) < 4:
+            flash('Password must be at least 4 characters.', 'error')
+            return render_template('reset_password.html')
+        if password != confirm:
+            flash('Passwords do not match.', 'error')
+            return render_template('reset_password.html')
+        user.password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        user.session_token = None
+        user.api_token = None
+        reset.used = True
+        db.session.commit()
+        session.pop('reset_user_id', None)
+        flash('Password updated successfully. You can now log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -968,6 +1035,98 @@ def admin_manual_notify(uid):
     send_email_async('Your Subscription is Expiring – Saqib SEO Tools Agency', body, user.username)
     flash(f'Expiry reminder sent to {user.username}.', 'success')
     return redirect(url_for('admin_users'))
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN – Tool Bundles
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/bundles')
+@admin_required
+def admin_bundles():
+    bundles = Bundle.query.order_by(Bundle.created_at.desc()).all()
+    tools   = Tool.query.filter_by(is_active=True).all()
+    users   = User.query.filter_by(role='user').order_by(User.username).all()
+    return render_template('admin_bundles.html', bundles=bundles, tools=tools, users=users)
+
+
+@app.route('/admin/bundles/create', methods=['POST'])
+@admin_required
+def admin_bundle_create():
+    name = request.form.get('name', '').strip()
+    tool_ids = [int(x) for x in request.form.getlist('tool_ids') if x.strip()]
+    if not name:
+        flash('Bundle name is required.', 'error')
+        return redirect(url_for('admin_bundles'))
+    if not tool_ids:
+        flash('Select at least one tool.', 'error')
+        return redirect(url_for('admin_bundles'))
+    bundle = Bundle(name=name)
+    db.session.add(bundle)
+    db.session.flush()
+    for tid in tool_ids:
+        db.session.add(BundleTool(bundle_id=bundle.id, tool_id=tid))
+    db.session.commit()
+    flash(f'Bundle "{name}" created with {len(tool_ids)} tools.', 'success')
+    return redirect(url_for('admin_bundles'))
+
+
+@app.route('/admin/bundles/edit/<int:bid>', methods=['POST'])
+@admin_required
+def admin_bundle_edit(bid):
+    bundle = db.session.get(Bundle, bid)
+    if not bundle:
+        flash('Bundle not found.', 'error')
+        return redirect(url_for('admin_bundles'))
+    name = request.form.get('name', '').strip()
+    tool_ids = [int(x) for x in request.form.getlist('tool_ids') if x.strip()]
+    if not name:
+        flash('Bundle name is required.', 'error')
+        return redirect(url_for('admin_bundles'))
+    if not tool_ids:
+        flash('Select at least one tool.', 'error')
+        return redirect(url_for('admin_bundles'))
+    bundle.name = name
+    BundleTool.query.filter_by(bundle_id=bid).delete()
+    for tid in tool_ids:
+        db.session.add(BundleTool(bundle_id=bid, tool_id=tid))
+    db.session.commit()
+    flash(f'Bundle "{name}" updated.', 'success')
+    return redirect(url_for('admin_bundles'))
+
+
+@app.route('/admin/bundles/delete/<int:bid>', methods=['POST'])
+@admin_required
+def admin_bundle_delete(bid):
+    bundle = db.session.get(Bundle, bid)
+    if not bundle:
+        flash('Bundle not found.', 'error')
+        return redirect(url_for('admin_bundles'))
+    name = bundle.name
+    db.session.delete(bundle)
+    db.session.commit()
+    flash(f'Bundle "{name}" deleted.', 'success')
+    return redirect(url_for('admin_bundles'))
+
+
+@app.route('/admin/bundles/assign', methods=['POST'])
+@admin_required
+def admin_bundle_assign():
+    bundle_id = int(request.form.get('bundle_id'))
+    user_id   = int(request.form.get('user_id'))
+    bundle    = db.session.get(Bundle, bundle_id)
+    user      = db.session.get(User, user_id)
+    if not bundle or not user:
+        flash('Bundle or user not found.', 'error')
+        return redirect(url_for('admin_bundles'))
+    added = 0
+    for bt in bundle.tools:
+        existing = UserTool.query.filter_by(user_id=user_id, tool_id=bt.tool_id).first()
+        if not existing:
+            db.session.add(UserTool(user_id=user_id, tool_id=bt.tool_id))
+            added += 1
+    db.session.commit()
+    flash(f'Bundle "{bundle.name}" → {user.username}: {added} tools assigned.', 'success')
+    return redirect(url_for('admin_bundles'))
 
 
 # ═══════════════════════════════════════════════════════════

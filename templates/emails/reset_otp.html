@@ -1,0 +1,10 @@
+{% extends 'emails/email_base.html' %}
+{% block content %}
+<p style="margin:0 0 16px;font-size:15px;color:#A1A1AA;">Hi <strong style="color:#FAFAFA;">{{ user.username }}</strong>,</p>
+<p style="margin:0 0 16px;font-size:15px;color:#A1A1AA;">Use the OTP below to reset your password. It expires in <strong style="color:#FAFAFA;">10 minutes</strong>.</p>
+<div style="background:#1A1A1A;border-radius:14px;padding:24px;text-align:center;margin:24px 0;border:1px solid #27272A;">
+  <span style="font-size:36px;font-weight:800;letter-spacing:12px;color:#F97316;font-family:monospace;">{{ otp }}</span>
+</div>
+<p style="margin:0 0 4px;font-size:13px;color:#52525B;">If you did not request this, you can safely ignore this email.</p>
+<p style="margin:0;font-size:13px;color:#52525B;">Saqib SEO Tools Agency</p>
+{% endblock %}

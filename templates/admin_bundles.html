@@ -1,0 +1,189 @@
+{% extends "layout.html" %}
+{% block title %}Bundle Manager - Saqib SEO Tools Agency{% endblock %}
+{% block page_title %}Bundle Manager{% endblock %}
+
+{% block header_stats %}
+<div class="header-stat">
+  <div class="num">{{ bundles|length }}</div>
+  <div class="label">Total Bundles</div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="togglePanel('createPanel')"><i class="fas fa-plus"></i> New Bundle</button>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .bundle-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .bundle-card:hover { border-color: rgba(249,115,22,0.25); }
+  .bundle-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .bundle-name { font-size: 16px; font-weight: 700; color: var(--text-main); }
+  .bundle-meta { font-size: 12px; color: var(--text-muted); }
+  .bundle-tools {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+  }
+  .bundle-tool-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    background: rgba(249,115,22,0.1); color: #FDBA74;
+  }
+  .bundle-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .bundle-actions select, .bundle-actions button { font-family: inherit; }
+  .assign-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .assign-row select {
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    background: #18181B; border: 1px solid var(--border-color);
+    color: var(--text-main); font-size: 13px; outline: none;
+  }
+  .tool-check-list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px; max-height: 300px; overflow-y: auto;
+    padding: 12px; background: #18181B; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .tool-check-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 6px; font-size: 13px;
+    cursor: pointer; transition: background 0.15s;
+    color: var(--text-main);
+  }
+  .tool-check-item:hover { background: rgba(255,255,255,0.04); }
+  .tool-check-item input[type="checkbox"] { accent-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block toolbar %}
+<div class="toolbar" style="margin-bottom:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg)">
+  <input class="toolbar-search" id="searchInput" placeholder="Search bundles..." oninput="filterBundles()">
+  <span style="color:var(--slate-300)">|</span>
+  <span style="font-size:12px;color:var(--slate-500);font-weight:500"><i class="fas fa-info-circle"></i> Bundles let you group tools and assign them to users in one click</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="createPanel" class="add-panel-card" style="display:none;">
+  <div class="panel-header"><i class="fas fa-layer-group"></i> Create New Bundle</div>
+  <div class="panel-body">
+    <form method="POST" action="/admin/bundles/create">
+      <div class="form-group">
+        <label class="form-label">Bundle Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. SEO Starter Pack" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Select Tools</label>
+        <div class="tool-check-list">
+          {% for t in tools %}
+          <label class="tool-check-item">
+            <input type="checkbox" name="tool_ids" value="{{ t.id }}">
+            <span>{{ t.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Bundle</button>
+      <button type="button" class="btn btn-outline" onclick="togglePanel('createPanel')">Cancel</button>
+    </form>
+  </div>
+</div>
+
+{% if bundles %}
+  {% for b in bundles %}
+  <div class="bundle-card">
+    <div class="bundle-header">
+      <div>
+        <div class="bundle-name"><i class="fas fa-layer-group" style="color:var(--primary);margin-right:8px;"></i>{{ b.name }}</div>
+        <div class="bundle-meta">{{ b.tools|length }} tools &middot; Created {{ b.created_at.strftime('%b %d, %Y') }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" class="user-action-btn" title="Edit bundle" onclick="toggleEdit({{ b.id }})"><i class="fas fa-pen"></i></button>
+        <form method="POST" action="/admin/bundles/delete/{{ b.id }}" onsubmit="return confirm('Delete bundle &quot;{{ b.name }}&quot;?')">
+          <button type="submit" class="user-action-btn" title="Delete bundle"><i class="fas fa-trash"></i></button>
+        </form>
+      </div>
+    </div>
+    <div id="editPanel{{ b.id }}" class="add-panel-card" style="display:none;margin-bottom:16px;">
+      <div class="panel-header"><i class="fas fa-pen"></i> Edit Bundle</div>
+      <div class="panel-body">
+        <form method="POST" action="/admin/bundles/edit/{{ b.id }}">
+          <div class="form-group">
+            <label class="form-label">Bundle Name</label>
+            <input type="text" name="name" class="form-control" value="{{ b.name }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Tools</label>
+            <div class="tool-check-list">
+              {% set bundle_tool_ids = b.tools|map(attribute='tool_id')|list %}
+              {% for t in tools %}
+              <label class="tool-check-item">
+                <input type="checkbox" name="tool_ids" value="{{ t.id }}" {% if t.id in bundle_tool_ids %}checked{% endif %}>
+                <span>{{ t.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+          <button type="button" class="btn btn-outline" onclick="toggleEdit({{ b.id }})">Cancel</button>
+        </form>
+      </div>
+    </div>
+    <div class="bundle-tools">
+      {% for bt in b.tools %}
+      <span class="bundle-tool-tag">{{ bt.tool.name }}</span>
+      {% endfor %}
+    </div>
+    <div class="bundle-actions">
+      <form method="POST" action="/admin/bundles/assign" class="assign-row">
+        <input type="hidden" name="bundle_id" value="{{ b.id }}">
+        <select name="user_id" required>
+          <option value="">Assign to user…</option>
+          {% for u in users %}
+          <option value="{{ u.id }}">{{ u.username }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-check"></i> Assign</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+  <i class="fas fa-layer-group" style="font-size:48px;margin-bottom:16px;opacity:0.3;"></i>
+  <p style="font-size:15px;">No bundles yet. Click <strong>New Bundle</strong> to create your first one.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePanel(id) {
+  var el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleEdit(bid) {
+  var el = document.getElementById('editPanel' + bid);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function filterBundles() {
+  var q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.bundle-card').forEach(function(card) {
+    var name = card.querySelector('.bundle-name').textContent.toLowerCase();
+    card.style.display = name.indexOf(q) === -1 ? 'none' : '';
+  });
+}
+</script>
+{% endblock %}
