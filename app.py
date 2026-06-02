@@ -80,7 +80,7 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'forgot_password', 'reset_password', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_launch'):
+        if request.endpoint in ('static', 'login', 'logout', 'forgot_password', 'reset_password', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_tool_image', 'mobile_launch'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
@@ -1219,9 +1219,18 @@ def mobile_tools():
             'url': r.tool.url or '',
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
-            'image': r.tool.image or '',
+            'image': ('/api/mobile/tool/image/' + str(r.tool.id)) if r.tool.image else '',
         })
     return jsonify({'ok': True, 'tools': tools, 'user_id': user.id, 'total': len(tools)})
+
+
+@app.route('/api/mobile/tool/image/<int:tid>')
+def mobile_tool_image(tid):
+    tool = db.session.get(Tool, tid)
+    if not tool or not tool.image:
+        return '', 404
+    img_bytes = base64.b64decode(tool.image)
+    return Response(img_bytes, mimetype='image/png')
 
 
 @app.route('/api/mobile/launch/<int:tid>')
