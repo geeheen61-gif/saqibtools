@@ -1008,7 +1008,9 @@ def mobile_login():
     user = User.query.filter_by(username=username).first()
     if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
         if user.api_token or user.session_token:
-            return jsonify({'ok': False, 'msg': 'Already logged in from another device. Logout first.'})
+            user.api_token = None
+            user.session_token = None
+            db.session.commit()
         tok = secrets.token_hex(32)
         user.api_token = tok
         db.session.commit()
