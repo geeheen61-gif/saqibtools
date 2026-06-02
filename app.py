@@ -76,7 +76,7 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download'):
+        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_tools', 'mobile_launch'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
