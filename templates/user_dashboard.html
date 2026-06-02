@@ -141,8 +141,13 @@
   {% for tool in tools %}
   {% set expiry = tool_expiry.get(tool.id) %}
   {% set is_expired = expiry and expiry < now %}
-  <div class="tool-card {{ 'expired' if is_expired else '' }}">
-    <div class="tool-card-header">
+    <div class="tool-card {{ 'expired' if is_expired else '' }}">
+      {% if tool.image %}
+      <div style="text-align:center;margin-bottom:12px;">
+        <img src="data:image/jpeg;base64,{{ tool.image }}" style="width:100%;max-height:100px;object-fit:contain;border-radius:10px;">
+      </div>
+      {% endif %}
+      <div class="tool-card-header">
       {% set cat_class = tool.category.lower().replace(' ', '-') %}
       <span class="cat-badge cat-{{ cat_class if cat_class in ['streaming','ai-tools','design','learning','productivity','general'] else 'general' }}">
         {{ tool.category }}

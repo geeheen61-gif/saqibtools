@@ -94,7 +94,7 @@
     <button class="btn-icon" onclick="togglePanel('addPanel')"><i class="fas fa-times"></i></button>
   </div>
   <div class="card-body">
-    <form method="POST" action="/admin/tools/add">
+    <form method="POST" action="/admin/tools/add" enctype="multipart/form-data">
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:16px">
         <div class="form-group">
           <label>Tool/Website Name</label>
@@ -115,6 +115,11 @@
       <div class="form-group">
         <label>Public Description</label>
         <input class="form-control" name="description" placeholder="Brief instruction or note for users (optional)">
+      </div>
+      <div class="form-group">
+        <label>Tool Image</label>
+        <input class="form-control" name="image" type="file" accept="image/*">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Optional. Upload a thumbnail for this tool.</div>
       </div>
       <div class="form-group">
         <label>Session Cookies (JSON Array) <span style="font-weight:normal;text-transform:none;color:var(--slate-400)">(exported via cookie editor)</span></label>
@@ -140,7 +145,7 @@
     <button class="btn-icon" onclick="togglePanel('editPanel')"><i class="fas fa-times"></i></button>
   </div>
   <div class="card-body">
-    <form method="POST" action="/admin/tools/edit/0" id="editForm">
+    <form method="POST" action="/admin/tools/edit/0" id="editForm" enctype="multipart/form-data">
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:16px">
         <div class="form-group">
           <label>Tool/Website Name</label>
@@ -161,6 +166,14 @@
       <div class="form-group">
         <label>Public Description</label>
         <input class="form-control" name="description" id="edit_description" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label>Tool Image</label>
+        <input class="form-control" name="image" type="file" accept="image/*">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Leave empty to keep current image. Upload to replace.</div>
+        <div id="edit_image_preview" style="margin-top:8px;display:none;">
+          <img style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);">
+        </div>
       </div>
       <div class="form-group">
         <label>Session Cookies (JSON Array)</label>
@@ -187,6 +200,7 @@
           <tr>
             <th style="width:40px"><input type="checkbox" onchange="toggleAll(this)"></th>
             <th style="width:60px">ID</th>
+            <th>Image</th>
             <th>Account details</th>
             <th>Category</th>
             <th>URL / Link</th>
@@ -199,6 +213,13 @@
           <tr class="tool-row">
             <td><input type="checkbox"></td>
             <td style="color:var(--slate-400);font-weight:500">#{{ t.id }}</td>
+            <td>
+              {% if t.image %}
+              <img src="data:image/jpeg;base64,{{ t.image }}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);">
+              {% else %}
+              <div style="width:44px;height:44px;border-radius:8px;background:#1A1A1A;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;"><i class="fas fa-image"></i></div>
+              {% endif %}
+            </td>
             <td>
               <div style="font-weight:600;color:var(--text-main)">{{ t.name }}</div>
               {% if t.description %}
@@ -237,7 +258,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="7" class="empty-state">
+            <td colspan="8" class="empty-state">
               <i class="fas fa-cube"></i>
               <h3>No tools registered</h3>
               <p>Click "New Tool" at the top right to register your first premium account session.</p>
@@ -291,6 +312,13 @@
         document.getElementById('edit_description').value = d.description || '';
         document.getElementById('edit_cookies').value = JSON.stringify(JSON.parse(d.cookies), null, 2);
         validateCookies(document.getElementById('edit_cookies'));
+        var preview = document.getElementById('edit_image_preview');
+        if (d.image) {
+          preview.style.display = 'block';
+          preview.querySelector('img').src = 'data:image/jpeg;base64,' + d.image;
+        } else {
+          preview.style.display = 'none';
+        }
       });
   }
 

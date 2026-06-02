@@ -130,6 +130,11 @@
       <div class="tool-grid">
         {% for tool in tools %}
         <article class="tool-card">
+          {% if tool.image %}
+          <div style="text-align:center;margin-bottom:14px;">
+            <img src="data:image/jpeg;base64,{{ tool.image }}" style="width:100%;max-height:120px;object-fit:contain;border-radius:12px;">
+          </div>
+          {% endif %}
           <div class="tool-meta">
             <span class="tool-badge"><i class="fas fa-tag"></i> {{ tool.category or 'General' }}</span>
             <span class="tool-url">{{ tool.url }}</span>

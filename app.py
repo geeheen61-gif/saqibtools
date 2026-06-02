@@ -313,6 +313,7 @@ def admin_tool_data(tid):
         'id': tool.id, 'name': tool.name, 'category': tool.category,
         'url': tool.url, 'description': tool.description,
         'cookies': tool.cookies, 'is_active': tool.is_active,
+        'image': tool.image or '',
     })
 
 
@@ -334,6 +335,9 @@ def admin_edit_tool(tid):
         except Exception as e:
             flash(f'Invalid cookies JSON: {e}', 'error')
             return redirect(url_for('admin_tools'))
+    img = request.files.get('image')
+    if img and img.filename:
+        tool.image = base64.b64encode(img.read()).decode()
     db.session.commit()
     flash(f'Tool "{tool.name}" updated.', 'success')
     return redirect(url_for('admin_tools'))
@@ -976,6 +980,9 @@ def admin_add_tool():
 
     tool = Tool(name=name, category=category, url=url,
                 description=description, cookies=cookies_str)
+    img = request.files.get('image')
+    if img and img.filename:
+        tool.image = base64.b64encode(img.read()).decode()
     db.session.add(tool)
     db.session.commit()
     flash(f'Tool "{name}" added successfully!', 'success')
