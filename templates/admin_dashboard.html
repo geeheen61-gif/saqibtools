@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% block title %}Admin Dashboard - Saqib Tools{% endblock %}
+{% block title %}Admin Dashboard - Saqib SEO Tools Agency{% endblock %}
 {% block page_title %}Admin Dashboard{% endblock %}
 {% block header_badge %}<span class="badge badge-active">Admin Control</span>{% endblock %}
 
@@ -17,7 +17,7 @@
     margin-bottom: 24px;
   }
   .stat-card {
-    background-color: white;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 20px;
@@ -48,7 +48,7 @@
   }
   .stat-card-label {
     font-size: 11px;
-    color: var(--slate-500);
+    color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -59,7 +59,7 @@
   .stat-card-value {
     font-size: 24px;
     font-weight: 700;
-    color: var(--slate-900);
+    color: var(--text-main);
     line-height: 1.2;
     margin-top: 2px;
   }
@@ -78,7 +78,7 @@
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-card-icon" style="background-color:#f5f3ff;color:#7c3aed">
+    <div class="stat-card-icon" style="background-color:rgba(249,115,22,0.1);color:var(--primary)">
       <i class="fas fa-users"></i>
     </div>
     <div class="stat-card-info">
@@ -87,7 +87,7 @@
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-card-icon" style="background-color:#ecfdf5;color:var(--success)">
+    <div class="stat-card-icon" style="background-color:rgba(16,185,129,0.1);color:var(--success)">
       <i class="fas fa-rocket"></i>
     </div>
     <div class="stat-card-info">
@@ -119,8 +119,8 @@
             <td style="color:var(--slate-400);font-weight:500">{{ loop.index }}</td>
             <td><strong>{{ log.user.username }}</strong></td>
             <td><span class="badge badge-active">{{ log.tool.name }}</span></td>
-            <td style="color:var(--slate-600)">
-              <i class="far fa-clock" style="margin-right:6px;color:var(--slate-400)"></i>
+            <td style="color:var(--text-muted)">
+              <i class="far fa-clock" style="margin-right:6px;color:var(--text-muted)"></i>
               <span data-time="{{ log.opened_at.isoformat() }}">{{ log.opened_at.strftime('%Y-%m-%d %H:%M') }}</span>
             </td>
           </tr>

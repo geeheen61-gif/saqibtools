@@ -3,40 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Saqib Tools{% endblock %}</title>
+  <title>{% block title %}Saqib SEO Tools Agency{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --primary-light: rgba(79, 70, 229, 0.08);
+      --primary: #F97316;
+      --primary-hover: #EA580C;
+      --primary-light: rgba(249, 115, 22, 0.1);
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
-      --slate-50: #f8fafc;
-      --slate-100: #f1f5f9;
-      --slate-200: #e2e8f0;
-      --slate-300: #cbd5e1;
-      --slate-400: #94a3b8;
-      --slate-500: #64748b;
-      --slate-600: #475569;
-      --slate-700: #334155;
-      --slate-800: #1e293b;
-      --slate-900: #0f172a;
+      --slate-50: #fafafa;
+      --slate-100: #f4f4f5;
+      --slate-200: #e4e4e7;
+      --slate-300: #d4d4d8;
+      --slate-400: #a1a1aa;
+      --slate-500: #71717a;
+      --slate-600: #52525b;
+      --slate-700: #3f3f46;
+      --slate-800: #27272a;
+      --slate-900: #18181b;
       
-      --bg-main: var(--slate-50);
-      --bg-card: #ffffff;
-      --border-color: var(--slate-200);
-      --text-main: var(--slate-900);
-      --text-muted: var(--slate-500);
+      --bg-main: #0A0A0A;
+      --bg-card: #18181B;
+      --border-color: #27272A;
+      --text-main: #FAFAFA;
+      --text-muted: #A1A1AA;
       
-      --sidebar-bg: var(--slate-900);
-      --sidebar-text: var(--slate-400);
-      --sidebar-text-active: #ffffff;
-      --sidebar-item-hover: rgba(255, 255, 255, 0.04);
-      --sidebar-item-active: var(--slate-800);
-      --sidebar-border: var(--slate-800);
+      --sidebar-bg: #000000;
+      --sidebar-text: #A1A1AA;
+      --sidebar-text-active: #FAFAFA;
+      --sidebar-item-hover: rgba(249, 115, 22, 0.08);
+      --sidebar-item-active: #1C1917;
+      --sidebar-border: #27272A;
       
       --sidebar-width: 250px;
       --header-height: 64px;
@@ -45,9 +45,9 @@
       --radius-lg: 16px;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
     }
 
     * {
@@ -82,31 +82,18 @@
     }
 
     .sidebar-header {
-      padding: 20px 24px;
+      padding: 16px 20px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       border-bottom: 1px solid var(--sidebar-border);
     }
 
-    .brand-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: var(--radius-md);
-      background: linear-gradient(135deg, var(--primary), #06b6d4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .brand-text {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--sidebar-text-active);
-      letter-spacing: -0.5px;
+    .sidebar-logo {
+      height: 40px;
+      width: auto;
+      display: block;
+      border-radius: 6px;
     }
 
     .brand-badge {
@@ -127,7 +114,7 @@
     .sidebar-search input {
       width: 100%;
       padding: 8px 12px 8px 36px;
-      background-color: #1a1e36;
+      background-color: #1A1A1A;
       border: 1px solid var(--sidebar-border);
       border-radius: var(--radius-md);
       color: var(--sidebar-text-active);
@@ -212,7 +199,7 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
+      background: linear-gradient(135deg, var(--primary), #EA580C);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -286,7 +273,7 @@
     }
 
     .menu-toggle:hover {
-      background-color: var(--slate-100);
+      background-color: #1F1F1F;
     }
 
     .header-left h1 {
@@ -312,7 +299,7 @@
     .header-stat .num {
       font-size: 16px;
       font-weight: 700;
-      color: var(--primary);
+      color: #FB923C;
     }
 
     .header-stat .label {
@@ -334,8 +321,8 @@
       border-radius: var(--radius-md);
       padding: 6px 12px;
       font-size: 12px;
-      color: var(--slate-700);
-      background-color: white;
+      color: var(--text-main);
+      background-color: var(--bg-card);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -346,8 +333,8 @@
     }
 
     .header-btn:hover {
-      background-color: var(--slate-50);
-      border-color: var(--slate-300);
+      background-color: #1F1F1F;
+      border-color: var(--slate-600);
     }
 
     /* Main Content */
@@ -382,18 +369,18 @@
 
     .btn-primary:hover {
       background-color: var(--primary-hover);
-      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+      box-shadow: 0 4px 10px rgba(249, 115, 22, 0.25);
     }
 
     .btn-outline {
-      background-color: white;
+      background-color: transparent;
       border-color: var(--border-color);
-      color: var(--slate-700);
+      color: var(--text-main);
     }
 
     .btn-outline:hover {
-      background-color: var(--slate-50);
-      border-color: var(--slate-300);
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--slate-600);
     }
 
     .btn-danger {
@@ -423,8 +410,8 @@
     }
 
     .btn-icon:hover {
-      background-color: var(--slate-100);
-      color: var(--slate-800);
+      background-color: #1F1F1F;
+      color: var(--text-main);
     }
 
     /* Cards */
@@ -439,7 +426,7 @@
 
     .card-header {
       padding: 16px 20px;
-      border-bottom: 1px solid var(--slate-100);
+      border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -478,7 +465,7 @@
       letter-spacing: 0.5px;
       padding: 10px 14px;
       border-bottom: 1px solid var(--border-color);
-      background-color: var(--slate-50);
+      background-color: #1A1A1A;
       text-align: left;
       white-space: nowrap;
     }
@@ -486,7 +473,7 @@
     table td {
       padding: 12px 14px;
       font-size: 13px;
-      border-bottom: 1px solid var(--slate-100);
+      border-bottom: 1px solid var(--border-color);
       color: var(--text-main);
       vertical-align: middle;
     }
@@ -496,7 +483,7 @@
     }
 
     table tr:hover td {
-      background-color: var(--slate-50);
+      background-color: #1F1F1F;
     }
 
     /* Empty state */
@@ -508,7 +495,7 @@
 
     .empty-state i {
       font-size: 32px;
-      color: var(--slate-300);
+      color: var(--slate-600);
       margin-bottom: 8px;
       display: block;
     }
@@ -528,7 +515,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background-color: white;
+      background-color: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 20px;
       padding: 5px 12px;
@@ -544,13 +531,13 @@
     }
 
     .checkbox-wrap.checked {
-      background-color: var(--primary-light);
+      background-color: rgba(249, 115, 22, 0.1);
       border-color: var(--primary);
-      color: var(--primary);
+      color: #FB923C;
     }
 
     .checkbox-wrap input {
-      accent-color: var(--primary);
+      accent-color: #F97316;
       margin: 0;
     }
 
@@ -581,7 +568,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background-color: var(--slate-50);
+      background-color: #1A1A1A;
     }
 
     .right-panel-header h3 {
@@ -630,16 +617,16 @@
 
     .task-item {
       padding: 12px 14px;
-      border-bottom: 1px solid var(--slate-100);
+      border-bottom: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      background-color: white;
+      background-color: #1A1A1A;
       margin-bottom: 8px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      border: 1px solid var(--slate-100);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
     }
 
     .task-item:hover {
-      background-color: var(--slate-50);
+      background-color: #1F1F1F;
     }
 
     .task-top {
@@ -696,9 +683,9 @@
     }
 
     .badge-active {
-      background-color: var(--primary-light);
-      color: var(--primary);
-      border: 1px solid rgba(79, 70, 229, 0.15);
+      background-color: rgba(249, 115, 22, 0.1);
+      color: #FB923C;
+      border: 1px solid rgba(249, 115, 22, 0.2);
     }
 
     /* Flash Messages */
@@ -714,15 +701,15 @@
     }
 
     .flash-s {
-      background-color: #ecfdf5;
-      border: 1px solid #d1fae5;
-      color: var(--success);
+      background-color: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #34D399;
     }
 
     .flash-e {
-      background-color: #fef2f2;
-      border: 1px solid #fee2e2;
-      color: var(--danger);
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #F87171;
     }
 
     /* Forms */
@@ -743,7 +730,7 @@
     .form-control {
       width: 100%;
       padding: 9px 12px;
-      background-color: white;
+      background-color: #0A0A0A;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       color: var(--text-main);
@@ -755,7 +742,7 @@
 
     .form-control:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
     }
 
     textarea.form-control {
@@ -798,8 +785,8 @@
 
     .toolbar-search:focus {
       border-color: var(--primary);
-      background-color: white;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      background-color: #0A0A0A;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
     }
 
     /* Backdrop on Mobile sidebar */
@@ -883,7 +870,8 @@
       table td { font-size: 11px; padding: 6px 6px; }
 
       .sidebar { width: 85vw; }
-      .sidebar-header { padding: 14px 16px; }
+      .sidebar-header { padding: 12px 16px; }
+      .sidebar-logo { height: 34px; }
       .sidebar-menu { padding: 8px; }
       .sidebar-item { font-size: 12px; padding: 8px 10px; }
       .sidebar-footer { padding: 12px 16px; }
@@ -905,8 +893,7 @@
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="brand-icon"><i class="fas fa-lock"></i></div>
-      <span class="brand-text">Saqib Tools</span>
+      <img src="/static/logo.jpeg" alt="Saqib SEO Tools Agency" class="sidebar-logo">
       <span class="brand-badge">v1.0</span>
     </div>
     
@@ -937,6 +924,9 @@
         </a>
         <a href="/admin/stats" class="sidebar-item {% if request.path == '/admin/stats' %}active{% endif %}">
           <i class="fas fa-history"></i><span>Usage Logs</span>
+        </a>
+        <a href="/admin/emails" class="sidebar-item {% if request.path == '/admin/emails' %}active{% endif %}">
+          <i class="fas fa-envelope"></i><span>Emails</span>
         </a>
         <div class="sidebar-separator"></div>
         <a href="/profile" class="sidebar-item {% if request.path == '/profile' %}active{% endif %}">
@@ -989,7 +979,7 @@
   <!-- Right Drawer Panel -->
   <div class="right-panel" id="rightPanel">
     <div class="right-panel-header">
-      <h3><i class="fas fa-history" style="color:var(--primary)"></i> Launch History</h3>
+      <h3><i class="fas fa-history" style="color:var(--primary)"></i> History</h3>
       <button class="right-panel-close" onclick="togglePanel()">&times;</button>
     </div>
     <div class="right-panel-body" id="panelBody">

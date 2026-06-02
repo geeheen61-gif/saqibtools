@@ -1,0 +1,25 @@
+{% extends "emails/email_base.html" %}
+{% block content %}
+<h2 style="color:#F97316;font-size:20px;margin:0 0 15px;">New Tool Available!</h2>
+<p style="font-size:14px;line-height:1.6;margin:0 0 10px;">
+  A new tool has been added to your dashboard:
+</p>
+<table style="width:100%;background-color:#27272A;border-radius:8px;padding:15px;margin:15px 0;">
+  <tr>
+    <td style="padding:4px 0;"><span style="color:#A1A1AA;">Tool:</span></td>
+    <td style="padding:4px 0;color:#FFFFFF;font-weight:600;">{{ tool.name }}</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 0;"><span style="color:#A1A1AA;">Category:</span></td>
+    <td style="padding:4px 0;color:#FFFFFF;">{{ tool.category }}</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 0;"><span style="color:#A1A1AA;">Description:</span></td>
+    <td style="padding:4px 0;color:#D4D4D8;">{{ tool.description or '—' }}</td>
+  </tr>
+</table>
+<p style="font-size:14px;line-height:1.6;margin:15px 0 0;">
+  Login to your dashboard to access it now.
+</p>
+<a href="{{ url_for('user_dashboard', _external=True) }}" style="display:inline-block;background-color:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 30px;border-radius:8px;font-size:14px;font-weight:600;margin-top:15px;">Go to Dashboard</a>
+{% endblock %}

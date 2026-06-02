@@ -13,6 +13,7 @@ class User(db.Model):
     is_active   = db.Column(db.Boolean, default=True)
     created_by  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at  = db.Column(db.DateTime, default=_utcnow)
+    subscription_expires_at = db.Column(db.DateTime, nullable=True)
     # Single-session tracking
     session_token = db.Column(db.String(64), nullable=True)
     api_token = db.Column(db.String(64), nullable=True)
@@ -66,3 +67,12 @@ class LaunchToken(db.Model):
     username    = db.Column(db.String(80), nullable=False)
     tool_name   = db.Column(db.String(100), nullable=False)
     created_at  = db.Column(db.DateTime, default=_utcnow)
+
+
+class EmailLog(db.Model):
+    __tablename__ = 'email_logs'
+    id          = db.Column(db.Integer, primary_key=True)
+    subject     = db.Column(db.String(200), nullable=False)
+    recipient   = db.Column(db.String(200), nullable=False)
+    sent_at     = db.Column(db.DateTime, default=_utcnow)
+    status      = db.Column(db.String(20), default='sent')

@@ -1,12 +1,12 @@
 {% extends "layout.html" %}
-{% block title %}Assign Access - Saqib Tools{% endblock %}
+{% block title %}Assign Access - Saqib SEO Tools Agency{% endblock %}
 {% block page_title %}Assign Access{% endblock %}
 {% block header_badge %}<span class="badge badge-active">{{ users|length }} Users</span>{% endblock %}
 
 {% block styles %}
 <style>
   .user-assign-card {
-    background-color: white;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 20px;
@@ -20,16 +20,16 @@
   }
   .user-assign-card:hover {
     box-shadow: var(--shadow-md);
-    border-color: var(--slate-300);
+    border-color: var(--slate-600);
   }
   .user-meta {
-    border-right: 1px solid var(--slate-100);
+    border-right: 1px solid var(--border-color);
     padding-right: 16px;
   }
   .user-meta-name {
     font-size: 15px;
     font-weight: 700;
-    color: var(--slate-900);
+    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -51,12 +51,12 @@
     gap: 8px;
     padding: 6px 10px;
     border-radius: var(--radius-md);
-    border: 1px solid var(--slate-100);
-    background: var(--slate-50);
+    border: 1px solid var(--border-color);
+    background: #1A1A1A;
   }
   .tool-assign-row:hover {
-    border-color: var(--slate-200);
-    background: white;
+    border-color: var(--slate-600);
+    background: #1F1F1F;
   }
   .tool-assign-row input[type="checkbox"] {
     accent-color: var(--primary);
@@ -65,30 +65,34 @@
     flex: 1;
     font-size: 13px;
     font-weight: 600;
-    color: var(--slate-800);
+    color: var(--text-main);
   }
   .tool-assign-row select {
     padding: 4px 6px;
-    border: 1px solid var(--slate-200);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: 11px;
-    background: white;
+    background: #0A0A0A;
     cursor: pointer;
     min-width: 90px;
+    color: #E4E4E7;
   }
   .tool-assign-row .credit-input {
     padding: 4px 6px;
-    border: 1px solid var(--slate-200);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: 11px;
-    background: white;
+    background: #0A0A0A;
     min-width: 100px;
+    color: #E4E4E7;
   }
   .custom-date-input {
     padding: 4px 6px;
-    border: 1px solid var(--slate-200);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: 11px;
+    background: #0A0A0A;
+    color: #E4E4E7;
     width: 140px;
   }
   .expiry-tag {
@@ -98,9 +102,9 @@
     border-radius: 10px;
     white-space: nowrap;
   }
-  .expiry-ok { background: #f0fdf4; color: #15803d; }
-  .expiry-warn { background: #fffbeb; color: #b45309; }
-  .expired { background: #fef2f2; color: #dc2626; }
+  .expiry-ok { background: rgba(16,185,129,0.1); color: #34D399; }
+  .expiry-warn { background: rgba(245,158,11,0.1); color: #FBBF24; }
+  .expired { background: rgba(239,68,68,0.1); color: #F87171; }
 
   @media (max-width: 768px) {
     .user-assign-card {
@@ -109,7 +113,7 @@
     }
     .user-meta {
       border-right: none;
-      border-bottom: 1px solid var(--slate-100);
+      border-bottom: 1px solid var(--border-color);
       padding-right: 0;
       padding-bottom: 12px;
     }
@@ -122,7 +126,7 @@
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background-color: white;
+    background-color: #1A1A1A;
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--primary);
     padding: 12px 18px;

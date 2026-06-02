@@ -1,0 +1,186 @@
+{% extends "layout.html" %}
+{% block title %}Email Notifications - Saqib SEO Tools Agency{% endblock %}
+{% block page_title %}Email Notifications{% endblock %}
+
+{% block styles %}
+<style>
+  .email-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media(max-width:900px){.email-wrap{grid-template-columns:1fr;}}
+
+  .email-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .email-card h3 {
+    color: var(--text-main);
+    font-size: 15px;
+    margin: 0 0 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+  .form-group label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 9px 12px;
+    background-color: #18181B;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+  .form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .toggle-row input[type="checkbox"] {
+    accent-color: #F97316;
+    width: 16px; height: 16px;
+    cursor: pointer;
+  }
+  .toggle-row label {
+    color: var(--text-main);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .log-table th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .log-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid #27272A;
+    color: var(--text-main);
+  }
+  .status-sent { color: #22C55E; }
+  .status-fail { color: #EF4444; }
+  .user-checkboxes {
+    display: none;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #18181B;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    margin-top: 4px;
+  }
+  .user-checkboxes label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-main);
+    padding: 2px 0;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="email-wrap">
+  <div class="email-card">
+    <h3><i class="fas fa-paper-plane" style="color:#F97316;margin-right:8px;"></i>Send Email</h3>
+    <form method="POST" action="{{ url_for('admin_send_email') }}">
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" name="subject" required placeholder="e.g. Important Announcement">
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea name="message" required placeholder="Write your message here..."></textarea>
+      </div>
+      <div class="form-group">
+            <label>Recipients</label>
+            <select name="to_type" onchange="toggleUserSelect(this.value)">
+              <option value="all">All Users (username is email)</option>
+              <option value="selected">Select Users</option>
+            </select>
+            <div class="user-checkboxes" id="userCheckboxes">
+              {% for u in users %}
+                <label><input type="checkbox" name="user_ids" value="{{ u.id }}"> {{ u.username }} {% if '@' in (u.username or '') %}<span style="color:var(--success);font-size:11px;"><i class="fas fa-check"></i></span>{% else %}<span style="color:var(--danger);font-size:11px;">no email</span>{% endif %}</label>
+              {% endfor %}
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Send Email</button>
+    </form>
+  </div>
+
+  <div class="email-card">
+    <h3><i class="fas fa-cog" style="color:#F97316;margin-right:8px;"></i>Actions</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 15px;">
+      SMTP {% if smtp_configured %}<span style="color:#22C55E;">configured</span>{% else %}<span style="color:#EF4444;">not configured</span> — set <code>SMTP_USERNAME</code> and <code>SMTP_PASSWORD</code> env vars{% endif %}.
+    </p>
+    <a href="{{ url_for('admin_check_expiry') }}" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;text-decoration:none;">
+      <i class="fas fa-exclamation-triangle"></i> Check &amp; Notify Expiring Subs
+    </a>
+    <p style="font-size:11px;color:var(--text-muted);margin:0 0 15px;">
+      Sends expiry warnings to users whose subscription expires within 3 days or has already expired.
+    </p>
+
+    <hr style="border-color:var(--border-color);margin:15px 0;">
+
+    <h3 style="border:none;margin-top:0;"><i class="fas fa-history" style="color:#F97316;margin-right:8px;"></i>Sent Emails</h3>
+    <div style="max-height:300px;overflow-y:auto;">
+      <table class="log-table">
+        <thead><tr><th>Subject</th><th>To</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.subject[:40] }}{% if log.subject|length > 40 %}...{% endif %}</td>
+            <td style="color:var(--text-muted);">{{ log.recipient }}</td>
+            <td class="status-{% if log.status == 'sent' %}sent{% else %}fail{% endif %}">{{ log.status[:15] }}</td>
+            <td style="color:var(--text-muted);white-space:nowrap;">{{ log.sent_at.strftime('%m/%d %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:15px;">No emails sent yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleUserSelect(val) {
+  document.getElementById('userCheckboxes').style.display = val === 'selected' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "emails/email_base.html" %}
+{% block content %}
+<h2 style="color:#EF4444;font-size:20px;margin:0 0 15px;">Subscription Expired</h2>
+<p style="font-size:14px;line-height:1.6;margin:0 0 10px;">
+  Hi <strong>{{ user.username }}</strong>,
+</p>
+<p style="font-size:14px;line-height:1.6;margin:0 0 10px;">
+  Your Saqib SEO Tools Agency subscription has <strong style="color:#EF4444;">expired</strong>.
+</p>
+<p style="font-size:14px;line-height:1.6;margin:0 0 10px;">
+  You can no longer access your tools. Please contact your administrator to renew your subscription.
+</p>
+<a href="{{ url_for('user_dashboard', _external=True) }}" style="display:inline-block;background-color:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 30px;border-radius:8px;font-size:14px;font-weight:600;margin-top:15px;">Contact Admin</a>
+{% endblock %}

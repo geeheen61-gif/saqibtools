@@ -3,335 +3,306 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In - Saqib Tools</title>
+  <title>Sign In - Saqib SEO Tools Agency</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --cyan: #06b6d4;
-      --violet: #7c3aed;
-      --pink: #ec4899;
-      --slate-50: #f8fafc;
-      --slate-100: #f1f5f9;
-      --slate-200: #e2e8f0;
-      --slate-300: #cbd5e1;
-      --slate-400: #94a3b8;
-      --slate-500: #64748b;
-      --slate-600: #475569;
-      --slate-700: #334155;
-      --slate-800: #1e293b;
-      --slate-900: #0f172a;
-      --radius: 14px;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --primary: #F97316;
+      --primary-hover: #EA580C;
+      --font: 'Inter', -apple-system, sans-serif;
     }
-
     body {
       font-family: var(--font);
       min-height: 100vh;
       display: flex;
+      background: #000;
+      color: #FAFAFA;
+    }
+
+    /* Left Panel - Brand */
+    .brand-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: var(--slate-900);
+      padding: 48px;
       position: relative;
       overflow: hidden;
-      padding: 16px;
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(249,115,22,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(249,115,22,0.06) 0%, transparent 50%),
+        #000;
     }
-
-    /* Animated gradient background */
-    .bg-grid {
-      position: fixed; inset: 0; z-index: 0;
-      background: 
-        radial-gradient(ellipse at 20% 50%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 50%, rgba(6, 182, 212, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 0%, rgba(124, 58, 237, 0.1) 0%, transparent 50%),
-        linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
-    }
-
-    .bg-grid::before {
+    .brand-panel::before {
       content: '';
       position: absolute; inset: 0;
-      background-image: 
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 60px 60px;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
     }
-
-    /* Floating orbs */
-    .orb {
-      position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
-      filter: blur(80px);
-      animation: orbFloat 8s ease-in-out infinite alternate;
-    }
-    .orb-1 {
-      width: 500px; height: 500px;
-      background: rgba(79, 70, 229, 0.2);
-      top: -200px; left: -200px;
-    }
-    .orb-2 {
-      width: 400px; height: 400px;
-      background: rgba(6, 182, 212, 0.15);
-      bottom: -150px; right: -150px;
-      animation-delay: -3s;
-    }
-    .orb-3 {
-      width: 300px; height: 300px;
-      background: rgba(124, 58, 237, 0.12);
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      animation-delay: -6s;
-    }
-    @keyframes orbFloat {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(30px, -30px) scale(1.1); }
-    }
-    .orb-3 {
-      animation: orbFloat2 12s ease-in-out infinite alternate;
-    }
-    @keyframes orbFloat2 {
-      0% { transform: translate(-50%, -50%) scale(1); }
-      100% { transform: translate(-40%, -60%) scale(1.2); }
-    }
-
-    .wrap {
-      width: 100%;
+    .brand-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
       max-width: 420px;
-      position: relative;
-      z-index: 10;
-      animation: fadeUp 0.6s ease-out;
     }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .brand-content img {
+      width: 180px;
+      height: auto;
+      border-radius: 16px;
+      margin-bottom: 28px;
+      box-shadow: 0 20px 60px rgba(249,115,22,0.2);
+    }
+    .brand-content h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .brand-content h1 span { color: var(--primary); }
+    .brand-content p {
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      line-height: 1.7;
     }
 
-    .card {
-      background: rgba(255, 255, 255, 0.04);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 24px;
-      padding: 44px 36px 36px;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+    /* Right Panel - Form */
+    .form-panel {
+      width: 480px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px;
+      background: #0A0A0A;
+      border-left: 1px solid #1A1A1A;
       position: relative;
-      overflow: hidden;
     }
-
-    .card::before {
+    .form-panel::after {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--cyan), var(--violet));
+      background: linear-gradient(90deg, var(--primary), #FB923C, var(--primary));
+      background-size: 200% 100%;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 0%; }
+      50% { background-position: 100% 0%; }
     }
 
-    /* Brand */
-    .brand {
-      display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
+    .form-header { margin-bottom: 36px; }
+    .form-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
     }
-    .brand-icon {
-      width: 42px; height: 42px; border-radius: 14px;
-      background: linear-gradient(135deg, var(--primary), var(--violet));
-      display: flex; align-items: center; justify-content: center;
-      color: white; font-size: 20px;
-      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
-    }
-    .brand-text {
-      font-size: 22px; font-weight: 800; color: white;
-      letter-spacing: -0.5px;
+    .form-header p {
+      color: rgba(255,255,255,0.4);
+      font-size: 14px;
     }
 
-    h1 {
-      text-align: center;
-      font-size: 20px; font-weight: 700;
-      color: white;
-      margin-top: 20px; margin-bottom: 4px;
-    }
-    .sub {
-      text-align: center;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 13px; font-weight: 500;
-      margin-bottom: 28px;
-    }
-
-    .form-group { margin-bottom: 18px; }
+    .form-group { margin-bottom: 20px; }
     .form-group label {
       display: block;
-      font-size: 11px; font-weight: 600;
-      color: rgba(255, 255, 255, 0.6);
-      margin-bottom: 6px;
-      text-transform: uppercase; letter-spacing: 0.5px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-
     .input-wrap { position: relative; }
     .input-wrap i {
-      position: absolute; left: 14px; top: 50%;
+      position: absolute; left: 16px; top: 50%;
       transform: translateY(-50%);
-      color: rgba(255, 255, 255, 0.3);
-      font-size: 14px; pointer-events: none;
+      color: rgba(255,255,255,0.2);
+      font-size: 15px;
       transition: color 0.2s;
     }
-
     input {
       width: 100%;
-      padding: 12px 14px 12px 42px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius);
+      padding: 14px 16px 14px 46px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
       font-size: 14px;
       color: white;
       outline: none;
       transition: all 0.2s;
       font-family: inherit;
     }
-    input::placeholder { color: rgba(255, 255, 255, 0.25); }
+    input::placeholder { color: rgba(255,255,255,0.15); }
     input:focus {
-      border-color: rgba(79, 70, 229, 0.5);
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      border-color: rgba(249,115,22,0.4);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 0 0 4px rgba(249,115,22,0.08);
     }
     input:focus ~ i { color: var(--primary); }
 
     .btn {
       width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, var(--primary), #6366f1);
+      padding: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
       color: white;
       border: none;
-      border-radius: var(--radius);
-      font-size: 14px; font-weight: 600;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
       font-family: inherit;
       margin-top: 8px;
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+      box-shadow: 0 4px 20px rgba(249,115,22,0.2);
       position: relative;
       overflow: hidden;
     }
     .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 28px rgba(79, 70, 229, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(249,115,22,0.3);
     }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    .btn .btn-text {
-      display: inline-flex; align-items: center; gap: 8px;
-    }
+    .btn .btn-text { display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
     .btn .btn-spinner { display: none; }
     .btn.loading .btn-text { display: none; }
-    .btn.loading .btn-spinner {
-      display: inline-flex; align-items: center; gap: 8px;
-    }
+    .btn.loading .btn-spinner { display: inline-flex; align-items: center; gap: 8px; }
 
     .flash {
       display: flex; align-items: center; gap: 10px;
-      padding: 10px 14px;
-      border-radius: var(--radius);
+      padding: 12px 16px;
+      border-radius: 12px;
       font-size: 13px; font-weight: 500;
-      margin-bottom: 20px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
+      margin-bottom: 24px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.15);
+      color: #F87171;
     }
     .flash i { font-size: 14px; }
 
-    .features {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 24px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .feat {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 11px; color: rgba(255, 255, 255, 0.35);
-      font-weight: 500;
-    }
-    .feat i {
-      font-size: 12px;
-      color: rgba(79, 70, 229, 0.5);
-    }
-
-    .footer {
-      text-align: center;
-      margin-top: 20px;
+    .divider {
+      display: flex; align-items: center; gap: 16px;
+      margin: 28px 0;
+      color: rgba(255,255,255,0.15);
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.06);
     }
 
-    @media (max-width: 480px) {
-      body { padding: 12px; }
-      .card { padding: 28px 20px 24px; border-radius: 18px; }
-      .brand-icon { width: 36px; height: 36px; font-size: 16px; border-radius: 12px; }
-      .brand-text { font-size: 18px; }
-      h1 { font-size: 17px; margin-top: 16px; }
-      .sub { font-size: 12px; margin-bottom: 22px; }
-      input { font-size: 14px; padding: 11px 12px 11px 38px; }
-      .btn { font-size: 13px; padding: 12px; }
-      .features { grid-template-columns: 1fr; }
-      .features { margin-top: 18px; padding-top: 16px; }
-      .bg-grid::before { background-size: 30px 30px; }
+    .social-btns {
+      display: flex;
+      gap: 12px;
+    }
+    .social-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      font-family: inherit;
+    }
+    .social-btn:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    .footnote {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 860px) {
+      body { flex-direction: column; }
+      .brand-panel { flex: none; padding: 40px 24px; min-height: auto; }
+      .brand-content img { width: 120px; margin-bottom: 16px; }
+      .brand-content h1 { font-size: 22px; }
+      .brand-content p { font-size: 13px; }
+      .form-panel { width: 100%; min-height: auto; padding: 32px 24px; border-left: none; }
+      .form-panel::after { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-
-  <div class="wrap">
-    <div class="card">
-      <div class="brand">
-        <div class="brand-icon"><i class="fas fa-lock"></i></div>
-        <span class="brand-text">Saqib Tools</span>
-      </div>
-
-      <h1>Welcome back</h1>
-      <p class="sub">Sign in to access your premium tools</p>
-
-      {% with msgs = get_flashed_messages(with_categories=true) %}
-        {% for cat,msg in msgs %}
-          <div class="flash">
-            <i class="fas fa-exclamation-circle"></i>
-            <span>{{ msg }}</span>
-          </div>
-        {% endfor %}
-      {% endwith %}
-
-      <form method="POST" onsubmit="handleLogin(this)">
-        <div class="form-group">
-          <label>Username</label>
-          <div class="input-wrap">
-            <input name="username" placeholder="Enter your username" required autofocus autocomplete="username">
-            <i class="fas fa-user"></i>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <div class="input-wrap">
-            <input type="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-            <i class="fas fa-lock"></i>
-          </div>
-        </div>
-        <button type="submit" class="btn" id="loginBtn">
-          <span class="btn-text"><i class="fas fa-arrow-right"></i> Sign In</span>
-          <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i> Signing in...</span>
-        </button>
-      </form>
-
-      <div class="features">
-        <div class="feat"><i class="fas fa-shield-alt"></i> Secure Access</div>
-        <div class="feat"><i class="fas fa-rocket"></i> Instant Launch</div>
-        <div class="feat"><i class="fas fa-cubes"></i> Premium Tools</div>
-        <div class="feat"><i class="fas fa-headset"></i> 24/7 Support</div>
-      </div>
+  <div class="brand-panel">
+    <div class="brand-content">
+      <img src="/static/logo.jpeg" alt="Saqib SEO Tools Agency">
+      <h1>Saqib SEO Tools Agency</h1>
+      <p>Premium browser tools for SEO professionals. Instant access, secure login, and 24/7 support.</p>
     </div>
-    <div class="footer">&copy; 2026 Saqib Tools. All rights reserved.</div>
+  </div>
+
+  <div class="form-panel">
+    <div class="form-header">
+      <h2>Welcome back</h2>
+      <p>Sign in to access your tools</p>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,msg in msgs %}
+        <div class="flash">
+          <i class="fas fa-exclamation-circle"></i>
+          <span>{{ msg }}</span>
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" onsubmit="handleLogin(this)">
+      <div class="form-group">
+        <label>Username</label>
+        <div class="input-wrap">
+          <input name="username" placeholder="Enter your username" required autofocus autocomplete="username">
+          <i class="fas fa-user"></i>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-wrap">
+          <input type="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+          <i class="fas fa-lock"></i>
+        </div>
+      </div>
+      <button type="submit" class="btn" id="loginBtn">
+        <span class="btn-text"><i class="fas fa-arrow-right"></i> Sign In</span>
+        <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i> Signing in...</span>
+      </button>
+    </form>
+
+    <div class="divider">Quick Access</div>
+
+    <div class="social-btns">
+      <a class="social-btn" href="/">
+        <i class="fas fa-globe"></i> Home
+      </a>
+      <a class="social-btn" href="https://wa.me/923156710146" target="_blank">
+        <i class="fab fa-whatsapp"></i> Support
+      </a>
+    </div>
+
+    <div class="footnote">&copy; 2026 Saqib SEO Tools Agency. All rights reserved.</div>
   </div>
 
   <script>

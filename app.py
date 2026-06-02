@@ -8,8 +8,12 @@ from functools import wraps
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify, flash, Response)
 
-from database import db, User, Tool, UserTool, UsageLog, LaunchToken
+from database import db, User, Tool, UserTool, UsageLog, LaunchToken, EmailLog
 import base64
+import smtplib
+import threading
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from browser  import open_tool
 
 
@@ -76,7 +80,7 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_tools', 'mobile_launch'):
+        if request.endpoint in ('static', 'login', 'logout', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_launch'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
@@ -161,6 +165,9 @@ def login():
         password = request.form.get('password', '').encode()
         user = User.query.filter_by(username=username).first()
         if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
+            if user.session_token or user.api_token:
+                flash('This account is already logged in from another device. Logout first.', 'error')
+                return render_template('login.html')
             tok = secrets.token_hex(32)
             user.session_token = tok
             db.session.commit()
@@ -179,6 +186,7 @@ def logout():
         user = db.session.get(User, session['uid'])
         if user:
             user.session_token = None
+            user.api_token = None
             db.session.commit()
     session.clear()
     return redirect(url_for('login'))
@@ -228,36 +236,6 @@ def admin_stats():
 def admin_tools():
     tools = Tool.query.order_by(Tool.created_at.desc()).all()
     return render_template('admin_tools.html', tools=tools)
-
-
-@app.route('/admin/tools/add', methods=['POST'])
-@admin_required
-def admin_add_tool():
-    name        = request.form.get('name', '').strip()
-    category    = request.form.get('category', 'General').strip()
-    url         = request.form.get('url', '').strip()
-    description = request.form.get('description', '').strip()
-    cookies_raw = request.form.get('cookies', '').strip()
-
-    if not name or not url or not cookies_raw:
-        flash('Name, URL and Cookies are required.', 'error')
-        return redirect(url_for('admin_tools'))
-
-    try:
-        parsed = json.loads(cookies_raw)
-        if not isinstance(parsed, list):
-            raise ValueError('Must be a JSON array')
-        cookies_str = json.dumps(parsed)
-    except Exception as e:
-        flash(f'Invalid cookies JSON: {e}', 'error')
-        return redirect(url_for('admin_tools'))
-
-    tool = Tool(name=name, category=category, url=url,
-                description=description, cookies=cookies_str)
-    db.session.add(tool)
-    db.session.commit()
-    flash(f'Tool "{name}" added successfully!', 'success')
-    return redirect(url_for('admin_tools'))
 
 
 @app.route('/admin/tools/data/<int:tid>')
@@ -328,6 +306,7 @@ def admin_users():
 def admin_add_user():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
+    email    = request.form.get('email', '').strip()
     subscription_days = request.form.get('subscription_days', '30').strip()
 
     if not username or not password:
@@ -827,6 +806,171 @@ def admin_reset_retailer_password(uid):
 
 
 # ═══════════════════════════════════════════════════════════
+# EMAIL – Utilities & Admin routes
+# ═══════════════════════════════════════════════════════════
+SMTP_SERVER   = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT     = int(os.getenv('SMTP_PORT', 587))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_FROM     = os.getenv('SMTP_FROM', SMTP_USERNAME)
+
+def send_email_async(subject, html_body, recipient):
+    def _send():
+        try:
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From']    = SMTP_FROM
+            msg['To']      = recipient
+            msg.attach(MIMEText(html_body, 'html'))
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as s:
+                s.starttls()
+                s.login(SMTP_USERNAME, SMTP_PASSWORD)
+                s.send_message(msg)
+            log = EmailLog(subject=subject, recipient=recipient, status='sent')
+            db.session.add(log)
+            db.session.commit()
+        except Exception as e:
+            log = EmailLog(subject=subject, recipient=recipient, status=f'fail: {e}')
+            db.session.add(log)
+            db.session.commit()
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def _render_email(template_name, **kw):
+    return render_template(f'emails/{template_name}', **kw)
+
+
+@app.route('/admin/emails')
+@admin_required
+def admin_emails():
+    users = User.query.filter_by(role='user').order_by(User.username).all()
+    logs  = EmailLog.query.order_by(EmailLog.sent_at.desc()).limit(100).all()
+    return render_template('admin_emails.html', users=users, logs=logs,
+                           smtp_configured=bool(SMTP_USERNAME and SMTP_PASSWORD))
+
+
+@app.route('/admin/emails/send', methods=['POST'])
+@admin_required
+def admin_send_email():
+    subject  = request.form.get('subject', '').strip()
+    message  = request.form.get('message', '').strip()
+    to_type  = request.form.get('to_type', 'all')
+    user_ids = request.form.getlist('user_ids')
+
+    if not subject or not message:
+        flash('Subject and message are required.', 'error')
+        return redirect(url_for('admin_emails'))
+
+    if to_type == 'all':
+        recipients = [u for u in User.query.filter_by(role='user').all() if '@' in (u.username or '')]
+    elif to_type == 'selected':
+        recipients = User.query.filter(User.id.in_(user_ids), User.role == 'user').all()
+    else:
+        recipients = []
+
+    if not recipients:
+        flash('No recipients found (users must have an email address).', 'error')
+        return redirect(url_for('admin_emails'))
+
+    body_html = render_template('emails/admin_broadcast.html',
+                                subject=subject, body=message)
+
+    count = 0
+    for u in recipients:
+        send_email_async(subject, body_html, u.username)
+        count += 1
+    flash(f'Email queued to {count} recipients.', 'success')
+    return redirect(url_for('admin_emails'))
+
+
+# ── Tool add notification ──────────────────────────────────────────────
+@app.route('/admin/tools/add', methods=['POST'])
+@admin_required
+def admin_add_tool():
+    name        = request.form.get('name', '').strip()
+    category    = request.form.get('category', 'General').strip()
+    url         = request.form.get('url', '').strip()
+    description = request.form.get('description', '').strip()
+    cookies_raw = request.form.get('cookies', '').strip()
+    notify      = request.form.get('notify_users') == 'on'
+
+    if not name or not url or not cookies_raw:
+        flash('Name, URL and Cookies are required.', 'error')
+        return redirect(url_for('admin_tools'))
+
+    try:
+        parsed = json.loads(cookies_raw)
+        if not isinstance(parsed, list):
+            raise ValueError('Must be a JSON array')
+        cookies_str = json.dumps(parsed)
+    except Exception as e:
+        flash(f'Invalid cookies JSON: {e}', 'error')
+        return redirect(url_for('admin_tools'))
+
+    tool = Tool(name=name, category=category, url=url,
+                description=description, cookies=cookies_str)
+    db.session.add(tool)
+    db.session.commit()
+    flash(f'Tool "{name}" added successfully!', 'success')
+
+    if notify:
+        recipients = [u for u in User.query.filter_by(role='user').all() if '@' in (u.username or '')]
+        if recipients:
+            body_html = render_template('emails/new_tool.html', tool=tool)
+            for u in recipients:
+                send_email_async(
+                    f'New Tool Available: {tool.name}',
+                    body_html, u.username
+                )
+            flash(f'Notification sent to {len(recipients)} users.', 'success')
+
+    return redirect(url_for('admin_tools'))
+
+
+# ── Subscription expiry check ──────────────────────────────────────────
+@app.route('/admin/emails/check-expiry')
+@admin_required
+def admin_check_expiry():
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    soon = now + timedelta(days=3)
+    users = [u for u in User.query.filter_by(role='user').all() if '@' in (u.username or '')]
+    sent = 0
+    for u in users:
+        if u.subscription_expires_at:
+            days_left = (u.subscription_expires_at - now).days
+            if 0 <= days_left <= 3:
+                body = render_template('emails/expiry_soon.html', user=u, days_left=days_left)
+                send_email_async(
+                    'Subscription Expiring Soon – Saqib SEO Tools Agency',
+                    body, u.username
+                )
+                sent += 1
+            elif days_left < 0:
+                body = render_template('emails/expired.html', user=u)
+                send_email_async(
+                    'Subscription Expired – Saqib SEO Tools Agency',
+                    body, u.username
+                )
+                sent += 1
+    flash(f'Expiry notifications sent to {sent} users.', 'success')
+    return redirect(url_for('admin_emails'))
+
+
+@app.route('/admin/emails/manual-notify/<int:uid>', methods=['POST'])
+@admin_required
+def admin_manual_notify(uid):
+    user = User.query.get_or_404(uid)
+    if '@' not in (user.username or ''):
+        flash('Username is not a valid email address.', 'error')
+        return redirect(url_for('admin_users'))
+    body = render_template('emails/expiry_soon.html', user=user,
+                           days_left=0)
+    send_email_async('Your Subscription is Expiring – Saqib SEO Tools Agency', body, user.username)
+    flash(f'Expiry reminder sent to {user.username}.', 'success')
+    return redirect(url_for('admin_users'))
+
+
+# ═══════════════════════════════════════════════════════════
 # USER – Dashboard & Tool launch
 # ═══════════════════════════════════════════════════════════
 @app.route('/dashboard')
@@ -863,12 +1007,26 @@ def mobile_login():
     password = (data.get('password') or '').encode()
     user = User.query.filter_by(username=username).first()
     if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
+        if user.api_token or user.session_token:
+            return jsonify({'ok': False, 'msg': 'Already logged in from another device. Logout first.'})
         tok = secrets.token_hex(32)
         user.api_token = tok
         db.session.commit()
         return jsonify({'ok': True, 'api_token': tok,
                         'user': {'id': user.id, 'username': user.username}})
     return jsonify({'ok': False, 'msg': 'Invalid credentials.'})
+
+
+@app.route('/api/mobile/logout')
+def mobile_logout():
+    token = request.headers.get('X-Session-Token') or request.args.get('token', '')
+    user = User.query.filter_by(api_token=token).first()
+    if user:
+        user.api_token = None
+        user.session_token = None
+        db.session.commit()
+        return jsonify({'ok': True})
+    return jsonify({'ok': False})
 
 
 @app.route('/api/mobile/tools')
@@ -890,6 +1048,7 @@ def mobile_tools():
             'name': r.tool.name or '',
             'category': r.tool.category or '',
             'description': r.tool.description or '',
+            'url': r.tool.url or '',
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
         })
@@ -1167,6 +1326,11 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN api_token VARCHAR(64);'))
             conn.commit()
         print('[MIGRATION] Added api_token to users')
+
+    # Create email_logs table if not exists
+    if 'email_logs' not in [t for t in insp.get_table_names()]:
+        EmailLog.__table__.create(db.engine)
+        print('[MIGRATION] Created email_logs table')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()

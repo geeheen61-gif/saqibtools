@@ -1,0 +1,7 @@
+{% extends "emails/email_base.html" %}
+{% block content %}
+<h2 style="color:#F97316;font-size:20px;margin:0 0 15px;">{{ subject }}</h2>
+<div style="font-size:14px;line-height:1.6;">
+  {{ body | replace('\n', '<br>') | safe }}
+</div>
+{% endblock %}

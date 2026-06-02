@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% block title %}Manage Tools - Saqib Tools{% endblock %}
+{% block title %}Manage Tools - Saqib SEO Tools Agency{% endblock %}
 {% block page_title %}Tool Manager{% endblock %}
 
 {% block header_stats %}
@@ -25,12 +25,12 @@
     font-size: 11px;
     font-weight: 600;
   }
-  .cat-streaming { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-  .cat-ai-tools { background-color: #ecfeff; color: #0f766e; border: 1px solid #cffafe; }
-  .cat-design { background-color: #fdf2f8; color: #be185d; border: 1px solid #fbcfe8; }
-  .cat-learning { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
-  .cat-productivity { background-color: #f5f3ff; color: #6d28d9; border: 1px solid #e9d5ff; }
-  .cat-general { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .cat-streaming { background-color: rgba(251,191,36,0.1); color: #FBBF24; border: 1px solid rgba(251,191,36,0.2); }
+  .cat-ai-tools { background-color: rgba(52,211,153,0.1); color: #34D399; border: 1px solid rgba(52,211,153,0.2); }
+  .cat-design { background-color: rgba(244,114,182,0.1); color: #F472B6; border: 1px solid rgba(244,114,182,0.2); }
+  .cat-learning { background-color: rgba(74,222,128,0.1); color: #4ADE80; border: 1px solid rgba(74,222,128,0.2); }
+  .cat-productivity { background-color: rgba(251,191,36,0.1); color: #FBBF24; border: 1px solid rgba(251,191,36,0.2); }
+  .cat-general { background-color: rgba(255,255,255,0.05); color: #A1A1AA; border: 1px solid rgba(255,255,255,0.1); }
 
   .action-btn-group {
     display: flex;
@@ -40,7 +40,7 @@
 
   .toggle-status-btn {
     border: 1px solid var(--border-color);
-    background-color: white;
+    background-color: var(--bg-card);
     cursor: pointer;
     width: 32px;
     height: 32px;
@@ -48,19 +48,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--slate-600);
+    color: var(--text-muted);
     transition: all 0.15s;
   }
   .toggle-status-btn:hover {
-    background-color: var(--slate-100);
-    color: var(--slate-900);
+    background-color: #1F1F1F;
+    color: var(--text-main);
   }
 
   /* Form Section Style */
   .add-panel-card {
     border: 1px solid var(--primary);
-    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.05);
-    background-color: white;
+    box-shadow: 0 10px 20px rgba(249, 115, 22, 0.08);
+    background-color: var(--bg-card);
     margin-bottom: 24px;
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -120,6 +120,10 @@
         <label>Session Cookies (JSON Array) <span style="font-weight:normal;text-transform:none;color:var(--slate-400)">(exported via cookie editor)</span></label>
         <textarea class="form-control" name="cookies" placeholder='[{"name":"session_id","value":"abc...","domain":".canva.com"}]' required></textarea>
         <div class="cookie-status"></div>
+      </div>
+      <div class="toggle-row" style="margin-bottom:10px">
+        <input type="checkbox" name="notify_users" id="notify_users">
+        <label for="notify_users"><i class="fas fa-bell" style="color:#F97316;margin-right:4px;"></i> Notify all users via email about this new tool</label>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px">
         <button type="button" class="btn btn-outline" onclick="togglePanel('addPanel')">Cancel</button>
@@ -196,9 +200,9 @@
             <td><input type="checkbox"></td>
             <td style="color:var(--slate-400);font-weight:500">#{{ t.id }}</td>
             <td>
-              <div style="font-weight:600;color:var(--slate-900)">{{ t.name }}</div>
+              <div style="font-weight:600;color:var(--text-main)">{{ t.name }}</div>
               {% if t.description %}
-                <div style="color:var(--slate-500);font-size:11px;margin-top:2px">{{ t.description }}</div>
+                <div style="color:var(--text-muted);font-size:11px;margin-top:2px">{{ t.description }}</div>
               {% endif %}
             </td>
             <td>
@@ -207,8 +211,8 @@
                 {{ t.category }}
               </span>
             </td>
-            <td style="color:var(--slate-500);font-size:12px">
-              <i class="fas fa-external-link-alt" style="font-size:10px;margin-right:4px;color:var(--slate-400)"></i>
+            <td style="color:var(--text-muted);font-size:12px">
+              <i class="fas fa-external-link-alt" style="font-size:10px;margin-right:4px;color:var(--text-muted)"></i>
               {{ t.url[:40] }}{% if t.url|length > 40 %}...{% endif %}
             </td>
             <td>
