@@ -3,3 +3,6 @@
 .env
 saqib_tools_portable.zip
 *.zip
+/pak
+
+/Android App

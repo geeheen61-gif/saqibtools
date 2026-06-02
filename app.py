@@ -856,6 +856,74 @@ def _is_mobile():
     return any(k in ua for k in keywords)
 
 
+@app.route('/api/mobile/login', methods=['POST'])
+def mobile_login():
+    data = request.get_json(silent=True) or request.form
+    username = (data.get('username') or '').strip()
+    password = (data.get('password') or '').encode()
+    user = User.query.filter_by(username=username).first()
+    if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
+        tok = secrets.token_hex(32)
+        user.session_token = tok
+        db.session.commit()
+        return jsonify({'ok': True, 'session_token': tok,
+                        'user': {'id': user.id, 'username': user.username}})
+    return jsonify({'ok': False, 'msg': 'Invalid credentials.'})
+
+
+@app.route('/api/mobile/tools')
+def mobile_tools():
+    token = request.headers.get('X-Session-Token') or request.args.get('token', '')
+    user = User.query.filter_by(session_token=token).first()
+    if not user:
+        return jsonify({'ok': False, 'msg': 'Invalid or expired session.'})
+    rows = (UserTool.query
+            .join(Tool, UserTool.tool_id == Tool.id)
+            .filter(UserTool.user_id == user.id, Tool.is_active == True)
+            .all())
+    tools = []
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    for r in rows:
+        is_expired = r.expires_at and r.expires_at < now
+        tools.append({
+            'id': r.tool.id,
+            'name': r.tool.name,
+            'category': r.tool.category,
+            'description': r.tool.description,
+            'is_expired': bool(is_expired),
+            'expires_at': r.expires_at.isoformat() if r.expires_at else None,
+        })
+    return jsonify({'ok': True, 'tools': tools})
+
+
+@app.route('/api/mobile/launch/<int:tid>')
+def mobile_launch(tid):
+    token = request.headers.get('X-Session-Token') or request.args.get('token', '')
+    user = User.query.filter_by(session_token=token).first()
+    if not user:
+        return jsonify({'ok': False, 'msg': 'Invalid session.'})
+    assignment = UserTool.query.filter_by(user_id=user.id, tool_id=tid).first()
+    if not assignment:
+        return jsonify({'ok': False, 'msg': 'Access denied.'})
+    tool = Tool.query.get_or_404(tid)
+    if not tool.is_active:
+        return jsonify({'ok': False, 'msg': 'Tool is disabled.'})
+    if assignment.expires_at and datetime.now(timezone.utc).replace(tzinfo=None) > assignment.expires_at:
+        return jsonify({'ok': False, 'msg': 'Subscription expired.'})
+    launch_token = secrets.token_urlsafe(16)
+    db.session.add(LaunchToken(
+        token=launch_token, url=tool.url, cookies=tool.cookies,
+        username=user.username, tool_name=tool.name,
+    ))
+    db.session.add(UsageLog(user_id=user.id, tool_id=tid))
+    db.session.commit()
+    return jsonify({
+        'ok': True, 'launch_token': launch_token,
+        'url': tool.url, 'tool_name': tool.name,
+        'msg': 'Launch token created.',
+    })
+
+
 @app.route('/use/<int:tid>')
 @login_required
 def use_tool(tid):

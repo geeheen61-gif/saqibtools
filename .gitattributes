@@ -1,0 +1,10 @@
+# Normalize to LF in repo, keep CRLF on Windows checkout
+* text=auto eol=lf
+
+# Binary files - no conversion
+*.webp binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.jar binary
+*.zip binary
