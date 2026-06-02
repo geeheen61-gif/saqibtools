@@ -864,9 +864,9 @@ def mobile_login():
     user = User.query.filter_by(username=username).first()
     if user and user.is_active and bcrypt.checkpw(password, user.password.encode()):
         tok = secrets.token_hex(32)
-        user.session_token = tok
+        user.api_token = tok
         db.session.commit()
-        return jsonify({'ok': True, 'session_token': tok,
+        return jsonify({'ok': True, 'api_token': tok,
                         'user': {'id': user.id, 'username': user.username}})
     return jsonify({'ok': False, 'msg': 'Invalid credentials.'})
 
@@ -874,7 +874,7 @@ def mobile_login():
 @app.route('/api/mobile/tools')
 def mobile_tools():
     token = request.headers.get('X-Session-Token') or request.args.get('token', '')
-    user = User.query.filter_by(session_token=token).first()
+    user = User.query.filter_by(api_token=token).first()
     if not user:
         return jsonify({'ok': False, 'msg': 'Invalid or expired session.'})
     rows = (UserTool.query
@@ -893,13 +893,13 @@ def mobile_tools():
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
         })
-    return jsonify({'ok': True, 'tools': tools})
+    return jsonify({'ok': True, 'tools': tools, 'user_id': user.id, 'total': len(tools)})
 
 
 @app.route('/api/mobile/launch/<int:tid>')
 def mobile_launch(tid):
     token = request.headers.get('X-Session-Token') or request.args.get('token', '')
-    user = User.query.filter_by(session_token=token).first()
+    user = User.query.filter_by(api_token=token).first()
     if not user:
         return jsonify({'ok': False, 'msg': 'Invalid session.'})
     assignment = UserTool.query.filter_by(user_id=user.id, tool_id=tid).first()
@@ -1161,6 +1161,12 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN session_token VARCHAR(64);'))
             conn.commit()
         print('[MIGRATION] Added session_token to users')
+
+    if 'api_token' not in cols_u:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE users ADD COLUMN api_token VARCHAR(64);'))
+            conn.commit()
+        print('[MIGRATION] Added api_token to users')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
