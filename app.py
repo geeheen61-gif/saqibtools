@@ -887,9 +887,9 @@ def mobile_tools():
         is_expired = r.expires_at and r.expires_at < now
         tools.append({
             'id': r.tool.id,
-            'name': r.tool.name,
-            'category': r.tool.category,
-            'description': r.tool.description,
+            'name': r.tool.name or '',
+            'category': r.tool.category or '',
+            'description': r.tool.description or '',
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
         })
