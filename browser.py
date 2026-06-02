@@ -137,13 +137,22 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
         user_data_dir = tempfile.mkdtemp(prefix='pw_profile_')
 
         with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                user_data_dir, headless=False, args=LAUNCH_ARGS,
-                ignore_default_args=['--enable-automation'],
-                no_viewport=True,
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                accept_downloads=False,
-            )
+            try:
+                context = p.chromium.launch_persistent_context(
+                    user_data_dir, headless=False, args=LAUNCH_ARGS,
+                    channel='chrome',
+                    ignore_default_args=['--enable-automation'],
+                    no_viewport=True,
+                    accept_downloads=False,
+                )
+            except Exception as e:
+                print(f'[browser] Google Chrome launch failed, falling back to standard Chromium: {e}')
+                context = p.chromium.launch_persistent_context(
+                    user_data_dir, headless=False, args=LAUNCH_ARGS,
+                    ignore_default_args=['--enable-automation'],
+                    no_viewport=True,
+                    accept_downloads=False,
+                )
             context.add_init_script(ANTI_THEFT_JS)
             context.add_init_script(_build_watermark_script(username))
 

@@ -270,13 +270,23 @@ def _open_tool(token, server):
                 is_semrush = 'semrush.com' in url
                 tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled',
                              '--no-sandbox', '--disable-gpu']
-                context = p.chromium.launch_persistent_context(
-                    profile_dir, headless=False,
-                    executable_path=chromium_path,
-                    args=tool_args,
-                    ignore_default_args=['--enable-automation'],
-                    no_viewport=True,
-                )
+                try:
+                    context = p.chromium.launch_persistent_context(
+                        profile_dir, headless=False,
+                        channel='chrome',
+                        args=tool_args,
+                        ignore_default_args=['--enable-automation'],
+                        no_viewport=True,
+                    )
+                except Exception as e:
+                    log_error(f'System Chrome launch failed, using bundled Chromium: {e}')
+                    context = p.chromium.launch_persistent_context(
+                        profile_dir, headless=False,
+                        executable_path=chromium_path,
+                        args=tool_args,
+                        ignore_default_args=['--enable-automation'],
+                        no_viewport=True,
+                    )
                 page = context.new_page()
                 page.add_init_script("""
                     (function(){
@@ -368,14 +378,25 @@ def main():
         os.makedirs(profile_dir, exist_ok=True)
 
         with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                profile_dir, headless=False,
-                executable_path=chromium_path,
-                args=["--start-maximized", "--disable-blink-features=AutomationControlled",
-                      "--no-sandbox", "--disable-gpu"],
-                ignore_default_args=["--enable-automation"],
-                no_viewport=True,
-            )
+            try:
+                context = p.chromium.launch_persistent_context(
+                    profile_dir, headless=False,
+                    channel='chrome',
+                    args=["--start-maximized", "--disable-blink-features=AutomationControlled",
+                          "--no-sandbox", "--disable-gpu"],
+                    ignore_default_args=["--enable-automation"],
+                    no_viewport=True,
+                )
+            except Exception as e:
+                log_error(f'System Chrome launch for dashboard failed, using bundled Chromium: {e}')
+                context = p.chromium.launch_persistent_context(
+                    profile_dir, headless=False,
+                    executable_path=chromium_path,
+                    args=["--start-maximized", "--disable-blink-features=AutomationControlled",
+                          "--no-sandbox", "--disable-gpu"],
+                    ignore_default_args=["--enable-automation"],
+                    no_viewport=True,
+                )
             splash.close()
 
             # Intercept navigation to /launch/<token> — open tool in new window,
