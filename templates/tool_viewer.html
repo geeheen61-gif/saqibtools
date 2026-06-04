@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ tool_name }} — Tool Viewer</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column}
+    .toolbar{background:#1a1a1a;border-bottom:1px solid #333;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+    .toolbar a.back{color:#8ab4f8;text-decoration:none;font-size:14px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+    .toolbar a.back:hover{color:#aecbfa}
+    .toolbar .title{font-size:16px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .toolbar .open-btn{background:#8ab4f8;color:#0f0f0f;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+    .toolbar .open-btn:hover{background:#aecbfa}
+    .content{flex:1;padding:24px 16px;max-width:800px;margin:0 auto;width:100%}
+    h1{font-size:22px;margin-bottom:4px}
+    .subtitle{color:#999;font-size:14px;margin-bottom:24px}
+    .card{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:20px;margin-bottom:16px}
+    .card h2{font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .card p{font-size:14px;color:#bbb;line-height:1.6}
+    .card code{display:block;background:#2a2a2a;padding:12px;border-radius:6px;font-size:13px;margin-top:10px;word-break:break-all;border:1px solid #444;color:#c9d1d9}
+    .card .btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .badge{display:inline-block;background:#2d2d2d;color:#8ab4f8;font-size:11px;padding:3px 8px;border-radius:4px}
+    .chip{display:inline-block;background:#8ab4f8;color:#0f0f0f;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;cursor:grab}
+    .chip:hover{background:#aecbfa}
+    .btn-copy{background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer}
+    .btn-copy:hover{background:#444}
+    .toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+    .toast.show{opacity:1}
+    .bookmarklet-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .proxy-btn{display:inline-flex;align-items:center;gap:8px;background linear-gradient(135deg,#2ea043,#238636);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
+    .proxy-btn:hover{filter:brightness(1.1)}
+    .features-list{list-style:none;margin-top:12px}
+    .features-list li{font-size:14px;color:#bbb;padding:6px 0;display:flex;align-items:center;gap:8px}
+    .features-list li::before{content:"✓";color:#2ea043;font-weight:700}
+    @media(max-width:600px){.bookmarklet-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a href="/dashboard" class="back">&larr; Back</a>
+  <span class="title">{{ tool_name }}</span>
+  <a href="{{ tool_url }}" target="_blank" rel="noopener noreferrer" class="open-btn">Open Direct</a>
+</div>
+
+<div class="content">
+  <h1>{{ tool_name }}</h1>
+  <p class="subtitle">Tool viewer &amp; controls</p>
+
+  <div class="card" style="border-color:#2ea043;background:#1a2a1a">
+    <h2 style="color:#2ea043">&#9889; Server-Side Proxy (Auto-Hide)</h2>
+    <p>Open the tool through our server &mdash; the sidebar is hidden <strong>automatically</strong>, no manual steps needed. A copy button is added to the toolbar.</p>
+    <ul class="features-list">
+      <li>Sidebar hidden automatically on load</li>
+      <li>Toolbar with Copy Output button injected</li>
+      <li>Uses your stored cookies for authentication</li>
+      <li>No bookmarklets, no console pasting</li>
+    </ul>
+    <div class="btn-row">
+      <a href="/tool/proxy/{{ token }}" class="proxy-btn" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#2ea043,#238636);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit">&#9654; Open via Proxy</a>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:#8ab4f8">
+    <h2>&#128279; Direct Access</h2>
+    <p>Open the tool directly in a new tab (sidebar NOT hidden).</p>
+    <code>{{ tool_url }}</code>
+    <div class="btn-row">
+      <a href="{{ tool_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#8ab4f8;color:#0f0f0f;border:none;border-radius:6px;padding:8px 20px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none">Open Directly</a>
+    </div>
+  </div>
+
+  {% if 'chatgpt.com' in tool_url or 'chat.openai.com' in tool_url %}
+  <div class="card">
+    <h2>&#128161; ChatGPT Bookmarklets <span class="badge">Manual fallback</span></h2>
+    <p>If the proxy doesn't work, use these bookmarklets directly on the ChatGPT page.</p>
+    <div class="bookmarklet-grid">
+      <div>
+        <p style="font-weight:600;margin-bottom:6px;font-size:14px">Hide Sidebar</p>
+        <p style="font-size:13px;color:#bbb;margin-bottom:8px">Hides the left sidebar on ChatGPT for more screen space.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="javascript:(function(){var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];var s=document.createElement('style');s.textContent=sels.join(',')+'{display:none!important}';if(document.head)document.head.appendChild(s);function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}h();setInterval(h,300);if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}})();" class="chip">&#9733; Drag Me</a>
+          <button class="btn-copy" onclick="copyBookmarklet('hide')">Copy Script</button>
+        </div>
+      </div>
+      <div>
+        <p style="font-weight:600;margin-bottom:6px;font-size:14px">Copy Output</p>
+        <p style="font-size:13px;color:#bbb;margin-bottom:8px">Copies all assistant responses to clipboard.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="javascript:(function(){var msgs=document.querySelectorAll('[data-message-author-role=\\"assistant\\"]');var txt='';for(var i=0;i<msgs.length;i++){var p=msgs[i].querySelector('.whitespace-pre-wrap');if(p)txt+=p.textContent+'\\n\\n'}if(txt){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}})()" class="chip">&#9733; Drag Me</a>
+          <button class="btn-copy" onclick="copyBookmarklet('copy')">Copy Script</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>&#8505; Info</h2>
+    <p><strong>Username:</strong> {{ username }}</p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function copyBookmarklet(type) {
+  var scripts = {
+    hide: "(function(){var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];var s=document.createElement('style');s.textContent=sels.join(',')+'{display:none!important}';if(document.head)document.head.appendChild(s);function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}h();setInterval(h,300);if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}})()",
+    copy: "(function(){var msgs=document.querySelectorAll('[data-message-author-role=\\\"assistant\\\"]');var txt='';for(var i=0;i<msgs.length;i++){var p=msgs[i].querySelector('.whitespace-pre-wrap');if(p)txt+=p.textContent+'\\n\\n'}if(txt){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}})()"
+  };
+  var text = scripts[type];
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function() {
+    showToast('Script copied! Paste in ChatGPT console (F12).');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('Script copied!'); } catch(e) { showToast('Could not copy.'); }
+    document.body.removeChild(ta);
+  });
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+</script>
+
+</body>
+</html>

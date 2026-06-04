@@ -65,6 +65,21 @@
   .btn-block:active { transform: scale(0.98); }
   .btn-block.green { background: linear-gradient(135deg, #10b981, #059669); }
 
+  .code-box {
+    background: #0A0A0A; border: 1px solid #333333; border-radius: 10px;
+    padding: 12px 14px; font-size: 11px; color: #A1A1AA;
+    word-break: break-all; font-family: monospace; margin-bottom: 10px;
+    max-height: 120px; overflow-y: auto; line-height: 1.6;
+  }
+  .bookmarklet-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; background: rgba(249,115,22,0.1);
+    border: 1px solid rgba(249,115,22,0.3); border-radius: 8px;
+    color: #FB923C; font-size: 12px; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: all 0.15s;
+  }
+  .bookmarklet-link:hover { background: rgba(249,115,22,0.2); }
+
   .back-link {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; color: #A1A1AA; text-decoration: none; margin-top: 8px;
@@ -98,7 +113,63 @@
     </a>
   </div>
 
+  {% if tool_url and ('chatgpt.com' in tool_url or 'chat.openai.com' in tool_url) %}
+  <div class="ml-section" style="border-color:#2ea043;background:#102a10">
+    <h3><span class="step-num" style="background:#2ea043"><i class="fas fa-magic"></i></span> Auto-Hide Sidebar + Copy</h3>
+    <p style="font-size:12px;color:#A1A1AA;margin-bottom:10px">
+      Open ChatGPT through our server <strong>— sidebar is hidden automatically</strong>, no bookmarklets needed. A copy button appears in the toolbar.
+    </p>
+    <a href="/tool/proxy/{{ token }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:linear-gradient(135deg,#2ea043,#238636);color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;box-shadow:0 4px 16px rgba(46,160,67,0.25);margin-bottom:10px">
+      <i class="fas fa-play"></i> Open via Proxy (Auto-Hide)
+    </a>
+    <p style="font-size:11px;color:#52525B;text-align:center">
+      Uses your stored cookies &bull; Sidebar hidden &bull; Copy button included
+    </p>
+  </div>
+
+  <div class="ml-section">
+    <h3><span class="step-num" style="background:#555">2</span> Manual: Hide sidebar</h3>
+    <p style="font-size:12px;color:#A1A1AA;margin-bottom:10px">
+      Bookmarklet fallback &mdash; drag to bookmarks bar, click on ChatGPT.
+    </p>
+    <div style="text-align:center;margin-bottom:10px">
+      <a class="bookmarklet-link" id="bookmarkletHide"
+         href="javascript:(function(){var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];var s=document.createElement('style');s.textContent=sels.join(',')+'{display:none!important}';if(document.head)document.head.appendChild(s);function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}h();setInterval(h,300);if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}})();">
+        <i class="fas fa-eye-slash"></i> &#9733; Drag Me
+      </a>
+    </div>
+  </div>
+
+  <div class="ml-section">
+    <h3><span class="step-num" style="background:#555">3</span> Manual: Copy output</h3>
+    <p style="font-size:12px;color:#A1A1AA;margin-bottom:10px">
+      Bookmarklet to copy all assistant responses.
+    </p>
+    <div style="text-align:center;margin-bottom:10px">
+      <a class="bookmarklet-link" id="bookmarkletCopy"
+         href="javascript:(function(){var msgs=document.querySelectorAll('[data-message-author-role=\"assistant\"]');var txt='';for(var i=0;i<msgs.length;i++){var p=msgs[i].querySelector('.whitespace-pre-wrap');if(p)txt+=p.textContent+'\\n\\n'}if(txt){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('Copied '+msgs.length+' responses!')}})();">
+        <i class="fas fa-copy"></i> &#9733; Drag Me
+      </a>
+    </div>
+  </div>
+
+  <div class="ml-section" style="border-color:#F97316">
+    <h3><span class="step-num" style="background:#10b981"><i class="fas fa-microphone"></i></span> Voice input (microphone)</h3>
+    <p style="font-size:12px;color:#A1A1AA;margin-bottom:10px">
+      ChatGPT supports voice input. On your device, allow microphone access when prompted by the browser.
+      On Android, use the Saqib app for the best experience with microphone support built-in.
+    </p>
+  </div>
+  {% endif %}
+
   <a href="/dashboard" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+
+  <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #27272A">
+    <a href="/tool/view/{{ token }}" style="color:#FB923C;font-size:12px;text-decoration:none">
+      <i class="fas fa-eye"></i> Open in Web Viewer
+    </a>
+    <p style="color:#52525B;font-size:11px;margin-top:4px">Access controls, bookmarklets &amp; ChatGPT tools</p>
+  </div>
 </div>
 {% endblock %}
 
@@ -110,6 +181,22 @@
       var btn = el.parentElement.querySelector('.copy-btn');
       btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
       setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
+    });
+  }
+  function copyBookmarklet() {
+    var code = document.getElementById('bookmarkletCode');
+    navigator.clipboard.writeText(code.textContent.trim()).then(function() {
+      var btn = code.parentElement.querySelector('.copy-btn');
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy Bookmarklet Code'; }, 2000);
+    });
+  }
+  function copyBookmarkletCopy() {
+    var code = document.getElementById('bookmarkletCopyCode');
+    navigator.clipboard.writeText(code.textContent.trim()).then(function() {
+      var btn = code.parentElement.querySelector('.copy-btn');
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i> Copy Bookmarklet Code'; }, 2000);
     });
   }
 </script>

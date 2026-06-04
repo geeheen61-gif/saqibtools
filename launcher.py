@@ -95,6 +95,40 @@ SEMRUSH_JS = """
 })();
 """
 
+CHATGPT_JS = """
+(function(){
+    var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+    var s=document.createElement('style');
+    s.textContent=sels.join(',')+'{display:none!important}';
+    if(document.head)document.head.appendChild(s);
+    function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+    h();setInterval(h,200);
+    if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}
+})();
+"""
+
+GRAMMARLY_JS = """
+(function(){
+    var sels=['header','[class*="header"]','[class*="nav"]','a[href*="logout"]','[data-testid="header"]','.app-header','.nav-bar','.nav-container'];
+    var s=document.createElement('style');
+    s.textContent=sels.join(',')+'{display:none!important}';
+    if(document.head)document.head.appendChild(s);
+    function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+    h();setInterval(h,300);
+})();
+"""
+
+PRIME_VIDEO_JS = """
+(function(){
+    var sels=['#navbar','#dv-web-nav-header','#av-breadcrumb','footer','[class*="nav-"]','.nav-links','.nav-banner','[data-testid="navbar"]','[data-testid="footer"]'];
+    var s=document.createElement('style');
+    s.textContent=sels.join(',')+'{display:none!important}';
+    if(document.head)document.head.appendChild(s);
+    function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+    h();setInterval(h,300);
+})();
+"""
+
 
 def main():
     if len(sys.argv) < 2:
@@ -142,6 +176,9 @@ def main():
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             is_semrush = 'semrush.com' in url
+            is_chatgpt = 'chatgpt.com' in url or 'chat.openai.com' in url
+            is_grammarly = 'grammarly.com' in url
+            is_primevideo = 'primevideo.com' in url or '/video' in url
             tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled', '--no-sandbox']
             context = p.chromium.launch_persistent_context(
                 user_data_dir, headless=False,
@@ -150,18 +187,30 @@ def main():
                 no_viewport=True,
                 user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                             'AppleWebKit/537.36 (KHTML, like Gecko) '
-                            'Chrome/124.0.0.0 Safari/537.36'),
+                            'Chrome/126.0.0.0 Safari/537.36'),
             )
             page = context.new_page()
             page.add_init_script(ANTI_THEFT_JS)
             if is_semrush:
                 page.add_init_script(SEMRUSH_JS)
+            if is_chatgpt:
+                page.add_init_script(CHATGPT_JS)
+            if is_grammarly:
+                page.add_init_script(GRAMMARLY_JS)
+            if is_primevideo:
+                page.add_init_script(PRIME_VIDEO_JS)
 
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
             page.reload(wait_until='domcontentloaded', timeout=60_000)
             if is_semrush:
                 page.evaluate(SEMRUSH_JS)
+            if is_chatgpt:
+                page.evaluate(CHATGPT_JS)
+            if is_grammarly:
+                page.evaluate(GRAMMARLY_JS)
+            if is_primevideo:
+                page.evaluate(PRIME_VIDEO_JS)
             print(f'[+] {tool_name} is ready! Close the browser window to end the session.')
 
             page.wait_for_event('close', timeout=0)

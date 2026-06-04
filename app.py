@@ -3,6 +3,8 @@ import json
 import bcrypt
 import secrets
 import urllib.request
+import re
+import requests as http_requests
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (Flask, render_template, request,
@@ -1369,6 +1371,154 @@ def launch_mobile(token):
     return render_template('launch_mobile.html',
                            tool_name=lt.tool_name,
                            tool_url=lt.url)
+
+
+@app.route('/tool/view/<token>')
+def tool_viewer(token):
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
+        return 'Invalid or expired launch token.', 404
+    return render_template('tool_viewer.html',
+                           tool_name=lt.tool_name,
+                           tool_url=lt.url,
+                           tool_id=lt.tool_id,
+                           username=lt.username,
+                           token=token)
+
+
+@app.route('/tool/proxy/<token>')
+def tool_proxy(token):
+    lt = LaunchToken.query.filter_by(token=token).first()
+    if not lt:
+        return 'Invalid or expired launch token.', 404
+
+    target = lt.url
+    cookies_dict = {}
+    if lt.cookies:
+        try:
+            clist = json.loads(lt.cookies)
+            for c in clist:
+                cookies_dict[c['name']] = c['value']
+        except Exception:
+            pass
+
+    ua = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+          'AppleWebKit/537.36 (KHTML, like Gecko) '
+          'Chrome/126.0.0.0 Safari/537.36')
+
+    hdrs = {
+        'User-Agent': ua,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+    }
+
+    try:
+        resp = http_requests.get(target, headers=hdrs, cookies=cookies_dict,
+                                 timeout=30, allow_redirects=True)
+    except Exception as e:
+        return f'Proxy error fetching {target}: {e}', 502
+
+    ct = resp.headers.get('Content-Type', '').lower()
+    if 'text/html' not in ct:
+        return Response(resp.content,
+                        content_type=ct or 'application/octet-stream')
+
+    html = resp.text
+
+    # Strip CSP meta tags that would block our inline scripts
+    html = re.sub(r'<meta[^>]*http-equiv=["\']Content-Security-Policy["\'][^>]*>', '', html, flags=re.IGNORECASE)
+    html = re.sub(r'<meta[^>]*http-equiv=["\']Content-Security-Policy-Report-Only["\'][^>]*>', '', html, flags=re.IGNORECASE)
+
+    # Inject <base> so relative URLs resolve to the original server
+    base_tag = f'<base href="{target.rstrip("/")}/">'
+    html = html.replace('<head>', f'<head>{base_tag}')
+
+    # Inject CSS + JS to hide UI elements (same pattern as Semrush: CSS + polling + MutationObserver)
+    is_chatgpt = 'chatgpt.com' in target or 'chat.openai.com' in target
+    is_grammarly = 'grammarly.com' in target
+    is_primevideo = 'primevideo.com' in target or '/video' in target
+
+    if is_chatgpt:
+        sels = json.dumps([
+            '#stage-slideover-sidebar > div > div > div > nav',
+            '#stage-slideover-sidebar',
+        ])
+        inject = (
+            '<script>'
+            '(function(){'
+            'var sels=' + sels + ';'
+            'var s=document.createElement("style");'
+            's.textContent=sels.join(",")+"{display:none!important}";'
+            'if(document.head)document.head.appendChild(s);'
+            'function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty("display","none","important")}}}'
+            'h();setInterval(h,200);'
+            'if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["style","class"]})}'
+            '})();'
+            '</script>'
+        )
+        html = html.replace('</head>', '<style>#stage-slideover-sidebar{display:none!important}#stage-slideover-sidebar>div>div>div>nav{display:none!important}</style></head>')
+        html = html.replace('</body>', inject + '\n</body>')
+        # Also try to intercept XMLHttpRequest/fetch to keep re-hiding sidebar
+        inject_xhr = (
+            '<script>'
+            '(function(){'
+            'var origOpen=XMLHttpRequest.prototype.open;'
+            'XMLHttpRequest.prototype.open=function(){this.addEventListener("load",function(){setTimeout(function(){'
+            'var sels=["#stage-slideover-sidebar > div > div > div > nav","#stage-slideover-sidebar"];'
+            'for(var si=0;si<sels.length;si++){'
+            'var e=document.querySelectorAll(sels[si]);'
+            'for(var i=0;i<e.length;i++){e[i].style.setProperty("display","none","important")}'
+            '}'
+            '},100)});'
+            'return origOpen.apply(this,arguments)};'
+            '})();'
+            '</script>'
+        )
+        html = html.replace('</body>', inject_xhr + '\n</body>')
+
+    if is_grammarly:
+        sels = json.dumps([
+            'header', '[class*="header"]', '[class*="nav"]',
+            'a[href*="logout"]', '[data-testid="header"]',
+            '.app-header', '.nav-bar', '.nav-container'
+        ])
+        inject = (
+            '<script>'
+            '(function(){'
+            'var sels=' + sels + ';'
+            'var s=document.createElement("style");'
+            's.textContent=sels.join(",")+"{display:none!important}";'
+            'if(document.head)document.head.appendChild(s);'
+            'function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty("display","none","important")}}}'
+            'h();setInterval(h,300);'
+            'if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["style","class"]})}'
+            '})();'
+            '</script>'
+        )
+        html = html.replace('</body>', inject + '\n</body>')
+
+    if is_primevideo:
+        sels = json.dumps([
+            '#navbar', '#dv-web-nav-header', '#av-breadcrumb',
+            'footer', '[class*="nav-"]', '.nav-links', '.nav-banner',
+            '[data-testid="navbar"]', '[data-testid="footer"]'
+        ])
+        inject = (
+            '<script>'
+            '(function(){'
+            'var sels=' + sels + ';'
+            'var s=document.createElement("style");'
+            's.textContent=sels.join(",")+"{display:none!important}";'
+            'if(document.head)document.head.appendChild(s);'
+            'function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty("display","none","important")}}}'
+            'h();setInterval(h,300);'
+            'if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["style","class"]})}'
+            '})();'
+            '</script>'
+        )
+        html = html.replace('</body>', inject + '\n</body>')
+
+    return Response(html, content_type='text/html; charset=utf-8')
 
 
 @app.route('/launch-download/<token>')

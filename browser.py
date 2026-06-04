@@ -157,6 +157,20 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             context.add_init_script(_build_watermark_script(username))
 
             page = context.new_page()
+            is_chatgpt = 'chatgpt.com' in url or 'chat.openai.com' in url
+            is_grammarly = 'grammarly.com' in url
+            is_primevideo = 'primevideo.com' in url or '/video' in url
+            if is_chatgpt:
+                page.add_init_script("""
+                    (function(){
+                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,200);
+                    })();
+                """)
             if 'semrush.com' in url:
                 page.add_init_script("""
                     (function(){
@@ -168,11 +182,44 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
                         h();setInterval(h,300);
                     })();
                 """)
+            if is_grammarly:
+                page.add_init_script("""
+                    (function(){
+                        var sels=['header','[class*="header"]','[class*="nav"]','a[href*="logout"]','[data-testid="header"]','.app-header','.nav-bar','.nav-container'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,300);
+                    })();
+                """)
+            if is_primevideo:
+                page.add_init_script("""
+                    (function(){
+                        var sels=['#navbar','#dv-web-nav-header','#av-breadcrumb','footer','[class*="nav-"]','.nav-links','.nav-banner','[data-testid="navbar"]','[data-testid="footer"]'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,300);
+                    })();
+                """)
+
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
             context.add_cookies(cookies)
-            injected = context.cookies()
-            print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
             page.reload(wait_until='domcontentloaded', timeout=60_000)
+            if is_chatgpt:
+                page.evaluate("""
+                    (function(){
+                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,200);
+                        if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}
+                    })();
+                """)
             if 'semrush.com' in url:
                 page.evaluate("""
                     (function(){
@@ -184,6 +231,32 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
                         h();setInterval(h,300);
                     })();
                 """)
+            if is_grammarly:
+                page.evaluate("""
+                    (function(){
+                        var sels=['header','[class*="header"]','[class*="nav"]','a[href*="logout"]','[data-testid="header"]','.app-header','.nav-bar','.nav-container'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,300);
+                        if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}
+                    })();
+                """)
+            if is_primevideo:
+                page.evaluate("""
+                    (function(){
+                        var sels=['#navbar','#dv-web-nav-header','#av-breadcrumb','footer','[class*="nav-"]','.nav-links','.nav-banner','[data-testid="navbar"]','[data-testid="footer"]'];
+                        var s=document.createElement('style');
+                        s.textContent=sels.join(',')+'{display:none!important}';
+                        if(document.head)document.head.appendChild(s);
+                        function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty('display','none','important')}}}
+                        h();setInterval(h,300);
+                        if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})}
+                    })();
+                """)
+            injected = context.cookies()
+            print(f'[browser] Cookies in jar: {len(injected)} of {len(cookies)} requested')
             print(f'[browser] Page reloaded: {url}')
             try:
                 page.wait_for_event('close', timeout=0)
