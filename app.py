@@ -1539,15 +1539,26 @@ def launch_download(token):
         with open(launcher_path, 'rb') as f:
             b64 = base64.b64encode(f.read()).decode()
 
+    # Split base64 into ~4000-char chunks (under Windows cmd's 8191-char line limit)
+    chunk_size = 4000
+    b64_chunks = [b64[i:i+chunk_size] for i in range(0, len(b64), chunk_size)] if b64 else []
+
     bat_parts = []
     bat_parts.append(f'@echo off')
     bat_parts.append(f'title Saqib Tools - {tool_name}')
     bat_parts.append(f'cd /d "%~dp0"')
     bat_parts.append(f'')
-    if b64:
+    if b64_chunks:
         bat_parts.append(f'if not exist "launcher.py" (')
         bat_parts.append(f'    echo Extracting launcher script...')
-        bat_parts.append(f'    echo {b64} >launcher.b64')
+        # Write base64 in small chunks to separate part files
+        for i, chunk in enumerate(b64_chunks):
+            bat_parts.append(f'    echo {chunk}>launcher.{i}')
+        # Concatenate parts and decode (extra whitespace between chunks is ignored by certutil)
+        parts = '+'.join([f'launcher.{i}' for i in range(len(b64_chunks))])
+        bat_parts.append(f'    copy /b {parts} launcher.b64 >nul')
+        part_files = ' '.join([f'launcher.{i}' for i in range(len(b64_chunks))])
+        bat_parts.append(f'    del {part_files} >nul 2>&1')
         bat_parts.append(f'    certutil -decode launcher.b64 launcher.py >nul 2>&1')
         bat_parts.append(f'    del launcher.b64 >nul 2>&1')
         bat_parts.append(f'    if not exist "launcher.py" (')
