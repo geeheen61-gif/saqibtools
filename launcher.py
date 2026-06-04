@@ -97,7 +97,7 @@ SEMRUSH_JS = """
 
 CHATGPT_JS = """
 (function(){
-    var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+    var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar','#page-header div[class*="shrink-0"] button'];
     var s=document.createElement('style');
     s.textContent=sels.join(',')+'{display:none!important}';
     if(document.head)document.head.appendChild(s);
@@ -171,7 +171,8 @@ def main():
     cookies = format_cookies(cookies_raw, url)
     print(f'[*] Prepared {len(cookies)} cookies')
 
-    user_data_dir = tempfile.mkdtemp(prefix='st_')
+    profile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profile')
+    os.makedirs(profile_dir, exist_ok=True)
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
@@ -181,7 +182,7 @@ def main():
             is_primevideo = 'primevideo.com' in url or '/video' in url
             tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled', '--no-sandbox']
             context = p.chromium.launch_persistent_context(
-                user_data_dir, headless=False,
+                profile_dir, headless=False,
                 args=tool_args,
                 ignore_default_args=['--enable-automation'],
                 no_viewport=True,
@@ -220,11 +221,6 @@ def main():
         import traceback
         traceback.print_exc()
         return 1
-    finally:
-        try:
-            shutil.rmtree(user_data_dir, ignore_errors=True)
-        except Exception:
-            pass
 
     print('[+] Session ended.')
     return 0

@@ -1442,6 +1442,7 @@ def tool_proxy(token):
         sels = json.dumps([
             '#stage-slideover-sidebar > div > div > div > nav',
             '#stage-slideover-sidebar',
+            '#page-header div[class*="shrink-0"] button',
         ])
         inject = (
             '<script>'

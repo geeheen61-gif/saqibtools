@@ -264,7 +264,8 @@ def _open_tool(token, server):
             if exp and not c.get('session'):
                 cookie['expires'] = int(float(exp))
             cookies.append(cookie)
-        profile_dir = tempfile.mkdtemp(prefix='st_tool_')
+        profile_dir = os.path.join(BASE, 'profile')
+        os.makedirs(profile_dir, exist_ok=True)
         try:
             with sync_playwright() as p:
                 is_semrush = 'semrush.com' in url
@@ -313,7 +314,7 @@ def _open_tool(token, server):
                 if is_chatgpt:
                     page.add_init_script("""
                         (function(){
-                            var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                            var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar','#page-header div[class*="shrink-0"] button'];
                             var s=document.createElement('style');
                             s.textContent=sels.join(',')+'{display:none!important}';
                             if(document.head)document.head.appendChild(s);
@@ -370,7 +371,7 @@ def _open_tool(token, server):
                 if is_chatgpt:
                     page.evaluate("""
                         (function(){
-                            var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                            var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar','#page-header div[class*="shrink-0"] button'];
                             var s=document.createElement('style');
                             s.textContent=sels.join(',')+'{display:none!important}';
                             if(document.head)document.head.appendChild(s);
@@ -406,8 +407,7 @@ def _open_tool(token, server):
                 page.wait_for_event('close', timeout=0)
                 context.close()
         finally:
-            try: shutil.rmtree(profile_dir, ignore_errors=True)
-            except: pass
+            pass
     except Exception:
         import traceback
         log_error(traceback.format_exc())

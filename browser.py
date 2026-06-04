@@ -134,7 +134,10 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
         cookies = _format_cookies(raw, url)
         print(f'[browser] Launching  user={username!r}  cookies={len(cookies)}  url={url}')
 
-        user_data_dir = tempfile.mkdtemp(prefix='pw_profile_')
+        profiles_root = os.path.join(os.path.dirname(__file__) or '.', 'profiles')
+        os.makedirs(profiles_root, exist_ok=True)
+        safe_user = username.replace(' ', '_').replace('/', '_')
+        user_data_dir = os.path.join(profiles_root, safe_user)
 
         with sync_playwright() as p:
             try:
@@ -163,7 +166,7 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             if is_chatgpt:
                 page.add_init_script("""
                     (function(){
-                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar','#page-header div[class*="shrink-0"] button'];
                         var s=document.createElement('style');
                         s.textContent=sels.join(',')+'{display:none!important}';
                         if(document.head)document.head.appendChild(s);
@@ -211,7 +214,7 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             if is_chatgpt:
                 page.evaluate("""
                     (function(){
-                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar'];
+                        var sels=['#stage-slideover-sidebar > div > div > div > nav','#stage-slideover-sidebar','#page-header div[class*="shrink-0"] button'];
                         var s=document.createElement('style');
                         s.textContent=sels.join(',')+'{display:none!important}';
                         if(document.head)document.head.appendChild(s);
@@ -268,12 +271,7 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
             except Exception as e:
                 print(f'[browser] Warning closing context: {e}')
 
-        import shutil
-        try:
-            shutil.rmtree(user_data_dir, ignore_errors=True)
-        except Exception:
-            pass
-        print(f'[browser] Session ended  user={username!r}')
+        print(f'[browser] Session ended  user={username!r}  profile={user_data_dir}')
 
     except Exception as e:
         import traceback

@@ -92,7 +92,6 @@
         <h1 class="headline">Get instant access to <span>automated premium tools</span> with one WhatsApp message.</h1>
         <p class="tagline">Browse the latest tool accounts available in our database, review each one in real time, and contact us directly to subscribe. No login required to explore.</p>
         <div class="hero-buttons">
-          <a class="btn btn-primary" href="https://wa.me/923156710146?text=Hello%20I%20want%20to%20subscribe%20to%20Saqib%20Tools">Subscribe via WhatsApp</a>
           <a class="btn btn-secondary" href="/login">Login to your account</a>
           <a class="btn btn-secondary" href="/static/Saqibtool.apk" download><i class="fas fa-download"></i> Download Android App</a>
         </div>
@@ -141,7 +140,6 @@
           <h3>{{ tool.name }}</h3>
           <p>{{ tool.description or 'No description available for this tool.' }}</p>
           <div class="tool-actions">
-            <a class="btn btn-primary" href="https://wa.me/923156710146?text=Hello%20I%20want%20to%20subscribe%20to%20{{ tool.name|replace(' ', '%20') }}">Subscribe</a>
             <a class="btn btn-secondary" href="{{ tool.url }}" target="_blank" rel="noreferrer"><i class="fas fa-external-link-alt"></i> Preview</a>
           </div>
         </article>
