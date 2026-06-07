@@ -264,29 +264,34 @@ def _open_tool(token, server):
             if exp and not c.get('session'):
                 cookie['expires'] = int(float(exp))
             cookies.append(cookie)
-        profile_dir = os.path.join(BASE, 'profile')
-        os.makedirs(profile_dir, exist_ok=True)
+        tool_profile = os.path.join(BASE, 'profile_tool')
+        os.makedirs(tool_profile, exist_ok=True)
         try:
             with sync_playwright() as p:
                 is_semrush = 'semrush.com' in url
                 tool_args = ['--start-maximized', '--disable-blink-features=AutomationControlled',
                              '--no-sandbox', '--disable-gpu']
+                ua = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                       'AppleWebKit/537.36 (KHTML, like Gecko) '
+                       'Chrome/126.0.0.0 Safari/537.36')
                 try:
                     context = p.chromium.launch_persistent_context(
-                        profile_dir, headless=False,
+                        tool_profile, headless=False,
                         channel='chrome',
                         args=tool_args,
                         ignore_default_args=['--enable-automation'],
                         no_viewport=True,
+                        user_agent=ua,
                     )
                 except Exception as e:
                     log_error(f'System Chrome launch failed, using bundled Chromium: {e}')
                     context = p.chromium.launch_persistent_context(
-                        profile_dir, headless=False,
+                        tool_profile, headless=False,
                         executable_path=chromium_path,
                         args=tool_args,
                         ignore_default_args=['--enable-automation'],
                         no_viewport=True,
+                        user_agent=ua,
                     )
                 page = context.new_page()
                 page.add_init_script("""
@@ -449,6 +454,9 @@ def main():
         profile_dir = os.path.join(BASE, "profile")
         os.makedirs(profile_dir, exist_ok=True)
 
+        ua = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+               'AppleWebKit/537.36 (KHTML, like Gecko) '
+               'Chrome/126.0.0.0 Safari/537.36')
         with sync_playwright() as p:
             try:
                 context = p.chromium.launch_persistent_context(
@@ -458,6 +466,7 @@ def main():
                           "--no-sandbox", "--disable-gpu"],
                     ignore_default_args=["--enable-automation"],
                     no_viewport=True,
+                    user_agent=ua,
                 )
             except Exception as e:
                 log_error(f'System Chrome launch for dashboard failed, using bundled Chromium: {e}')
@@ -468,6 +477,7 @@ def main():
                           "--no-sandbox", "--disable-gpu"],
                     ignore_default_args=["--enable-automation"],
                     no_viewport=True,
+                    user_agent=ua,
                 )
             splash.close()
 
