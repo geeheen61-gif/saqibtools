@@ -16,11 +16,13 @@ ANTI_THEFT_JS = """
 """
 
 LAUNCH_ARGS = [
-    '--disable-extensions','--disable-plugins','--disable-translate',
+    '--disable-extensions','--disable-translate',
     '--no-first-run','--disable-sync','--no-default-browser-check',
     '--disable-features=Translate','--disable-save-password-bubble',
     '--start-maximized','--disable-blink-features=AutomationControlled',
     '--no-existing-browser-frame',
+    '--autoplay-policy=no-user-gesture-required',
+    '--enable-features=Widevine,HardwareMediaKeyHandling',
 ]
 
 
@@ -208,9 +210,16 @@ def _run_browser(url: str, cookies_json: str, username: str, install_logs=None):
                     })();
                 """)
 
+            page.goto('about:blank', wait_until='domcontentloaded', timeout=30_000)
+            ok = 0
+            for c in cookies:
+                try:
+                    context.add_cookies([c])
+                    ok += 1
+                except Exception as e:
+                    print(f'[browser] Cookie rejected: {c.get("name","?")} domain={c.get("domain","?")} -> {e}')
+            print(f'[browser] Cookies injected: {ok} of {len(cookies)}')
             page.goto(url, wait_until='domcontentloaded', timeout=60_000)
-            context.add_cookies(cookies)
-            page.reload(wait_until='domcontentloaded', timeout=60_000)
             if is_chatgpt:
                 page.evaluate("""
                     (function(){
