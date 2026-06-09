@@ -1007,7 +1007,7 @@ def admin_emails():
     users = User.query.filter_by(role='user').order_by(User.username).all()
     logs  = EmailLog.query.order_by(EmailLog.sent_at.desc()).limit(100).all()
     return render_template('admin_emails.html', users=users, logs=logs,
-                           smtp_configured=bool(SMTP_USERNAME and SMTP_PASSWORD))
+                           smtp_configured=bool(BREVO_API_KEY and BREVO_SENDER_EMAIL))
 
 
 @app.route('/admin/emails/send', methods=['POST'])
@@ -1134,6 +1134,16 @@ def admin_manual_notify(uid):
     send_email_async('Your Subscription is Expiring – Saqib SEO Tools Agency', body, user.username)
     flash(f'Expiry reminder sent to {user.username}.', 'success')
     return redirect(url_for('admin_users'))
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN – KVM Slots
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/kvm-slots')
+@admin_required
+def admin_kvm_slots():
+    tools = Tool.query.order_by(Tool.name).all()
+    return render_template('admin_kvm_slots.html', tools=tools)
 
 
 # ═══════════════════════════════════════════════════════════

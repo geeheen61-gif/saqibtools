@@ -931,6 +931,9 @@
         <a href="/admin/emails" class="sidebar-item {% if request.path == '/admin/emails' %}active{% endif %}">
           <i class="fas fa-envelope"></i><span>Emails</span>
         </a>
+        <a href="/admin/kvm-slots" class="sidebar-item {% if request.path.startswith('/admin/kvm-slots') %}active{% endif %}">
+          <i class="fas fa-desktop"></i><span>KVM Slots</span>
+        </a>
         <div class="sidebar-separator"></div>
         <a href="/profile" class="sidebar-item {% if request.path == '/profile' %}active{% endif %}">
           <i class="fas fa-user-cog"></i><span>My Profile</span>
