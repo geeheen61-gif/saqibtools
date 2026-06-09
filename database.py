@@ -77,7 +77,7 @@ class EmailLog(db.Model):
     subject     = db.Column(db.String(200), nullable=False)
     recipient   = db.Column(db.String(200), nullable=False)
     sent_at     = db.Column(db.DateTime, default=_utcnow)
-    status      = db.Column(db.String(20), default='sent')
+    status      = db.Column(db.Text, default='sent')
 
 
 class PasswordReset(db.Model):

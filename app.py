@@ -177,7 +177,7 @@ def login():
                 PasswordReset.query.filter_by(user_id=user.id, used=False).delete()
                 db.session.add(PasswordReset(user_id=user.id, otp=otp, expires_at=expires))
                 db.session.commit()
-                send_email_sync(
+                send_email_async(
                     subject='Force Logout OTP - Saqib SEO Tools Agency',
                     html_body=render_template('emails/force_logout_otp.html', otp=otp, user=user),
                     recipient=user.username,
@@ -279,6 +279,7 @@ def reset_password():
 def force_logout_verify():
     user_id = session.get('force_logout_user_id')
     if not user_id:
+        flash('Please enter your username and password first. If your account is already logged in, you will receive an OTP to force logout.', 'info')
         return redirect(url_for('login'))
     user = db.session.get(User, user_id)
     if not user:
@@ -956,7 +957,8 @@ SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
 SMTP_FROM     = os.getenv('SMTP_FROM', SMTP_USERNAME)
 
-def send_email_sync(subject, html_body, recipient):
+
+def _send_in_background(subject, html_body, recipient):
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
@@ -969,20 +971,27 @@ def send_email_sync(subject, html_body, recipient):
             s.ehlo()
             s.login(SMTP_USERNAME, SMTP_PASSWORD)
             s.send_message(msg)
-        log = EmailLog(subject=subject, recipient=recipient, status='sent')
-        db.session.add(log)
-        db.session.commit()
-        print(f'[email] Sent to {recipient}: {subject}')
+        print(f'[email] OK → {recipient}: {subject}')
     except Exception as e:
-        print(f'[email] FAIL to {recipient}: {e}')
-        try:
-            log = EmailLog(subject=subject, recipient=recipient, status=f'fail: {e}')
-            db.session.add(log)
-            db.session.commit()
-        except Exception:
-            pass
+        print(f'[email] FAIL → {recipient}: {str(e)[:200]}')
 
-send_email_async = send_email_sync
+
+def send_email_async(subject, html_body, recipient):
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        print('[email] SKIP — SMTP_USERNAME or SMTP_PASSWORD not set')
+        return
+    db.session.rollback()
+    threading.Thread(target=_send_in_background, args=(subject, html_body, recipient), daemon=True).start()
+
+
+@app.route('/test-email')
+def test_email():
+    send_email_async(
+        subject='Test Email - Saqib SEO Tools Agency',
+        html_body='<h1 style="color:#F97316;">It works!</h1><p>Email sending is configured correctly.</p>',
+        recipient=SMTP_USERNAME,
+    )
+    return 'Email queued. Check your inbox in a few seconds.'
 
 
 def _render_email(template_name, **kw):
@@ -1773,6 +1782,17 @@ def seed():
     if 'password_resets' not in [t for t in insp.get_table_names()]:
         PasswordReset.__table__.create(db.engine)
         print('[MIGRATION] Created password_resets table')
+
+    # Migrate: widen email_logs.status from VARCHAR(20) to TEXT
+    cols_e = [c['name'] for c in insp.get_columns('email_logs')]
+    if 'status' in cols_e:
+        status_col = next(c for c in insp.get_columns('email_logs') if c['name'] == 'status')
+        col_type = str(status_col['type'])
+        if 'VARCHAR' in col_type.upper() and 'TEXT' not in col_type.upper():
+            with db.engine.connect() as conn:
+                conn.execute(sa.text('ALTER TABLE email_logs ALTER COLUMN status TYPE TEXT'))
+                conn.commit()
+            print('[MIGRATION] Widened email_logs.status to TEXT')
 
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
