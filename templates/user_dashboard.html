@@ -181,6 +181,10 @@
     <button class="btn btn-primary launch-btn btn-disabled" disabled>
       <i class="fas fa-lock"></i> <span class="btn-text">Subscription Expired</span>
     </button>
+    {% elif tool.kvm_url %}
+    <a href="{{ tool.kvm_url }}" target="_blank" rel="noopener" class="btn btn-primary launch-btn" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <i class="fas fa-external-link-alt"></i> <span class="btn-text">Open Browser</span>
+    </a>
     {% else %}
     <button class="btn btn-primary launch-btn" data-id="{{ tool.id }}" data-name="{{ tool.name|e }}">
       <i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>
@@ -243,7 +247,10 @@
         }
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> <span class="btn-text">Launch Session</span>';
-        if (d.mode === 'mobile') {
+        if (d.mode === 'kvm') {
+          window.open(d.kvm_url, '_blank');
+          showToast('\u2705 Opening <strong>' + name + '</strong> in your browser...', 'success');
+        } else if (d.mode === 'mobile') {
           window.location.href = '/launch/mobile/' + encodeURIComponent(d.token);
         } else if (d.mode === 'remote') {
           window.location.href = '/launch/' + encodeURIComponent(d.token);

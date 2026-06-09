@@ -314,7 +314,8 @@ def admin_tool_data(tid):
     return jsonify({
         'id': tool.id, 'name': tool.name, 'category': tool.category,
         'url': tool.url, 'description': tool.description,
-        'cookies': tool.cookies, 'is_active': tool.is_active,
+        'cookies': tool.cookies, 'kvm_url': tool.kvm_url or '',
+        'is_active': tool.is_active,
         'image': tool.image or '',
     })
 
@@ -327,6 +328,7 @@ def admin_edit_tool(tid):
     tool.category    = request.form.get('category', tool.category).strip()
     tool.url         = request.form.get('url', tool.url).strip()
     tool.description = request.form.get('description', tool.description).strip()
+    tool.kvm_url     = request.form.get('kvm_url', '').strip() or None
     cookies_raw      = request.form.get('cookies', '').strip()
     if cookies_raw:
         try:
@@ -982,6 +984,7 @@ def admin_add_tool():
     url         = request.form.get('url', '').strip()
     description = request.form.get('description', '').strip()
     cookies_raw = request.form.get('cookies', '').strip()
+    kvm_url     = request.form.get('kvm_url', '').strip() or None
     notify      = request.form.get('notify_users') == 'on'
 
     if not name or not url or not cookies_raw:
@@ -998,7 +1001,8 @@ def admin_add_tool():
         return redirect(url_for('admin_tools'))
 
     tool = Tool(name=name, category=category, url=url,
-                description=description, cookies=cookies_str)
+                description=description, cookies=cookies_str,
+                kvm_url=kvm_url)
     img = request.files.get('image')
     if img and img.filename:
         tool.image = base64.b64encode(img.read()).decode()
@@ -1236,6 +1240,7 @@ def mobile_tools():
             'category': r.tool.category or '',
             'description': r.tool.description or '',
             'url': r.tool.url or '',
+            'kvm_url': r.tool.kvm_url or '',
             'is_expired': bool(is_expired),
             'expires_at': r.expires_at.isoformat() if r.expires_at else None,
             'image': ('/api/mobile/tool/image/' + str(r.tool.id)) if r.tool.image else '',
@@ -1276,6 +1281,7 @@ def mobile_launch(tid):
     return jsonify({
         'ok': True, 'launch_token': launch_token,
         'url': tool.url, 'tool_name': tool.name,
+        'kvm_url': tool.kvm_url or '',
         'msg': 'Launch token created.',
     })
 
@@ -1299,6 +1305,15 @@ def use_tool(tid):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     on_render = os.getenv('RENDER', '').lower() in ('1', 'true', 'yes')
+
+    # If tool has a KVM URL, return it for direct opening instead of Playwright launch
+    if tool.kvm_url:
+        db.session.add(UsageLog(user_id=uid, tool_id=tid))
+        db.session.commit()
+        return jsonify({
+            'ok': True, 'mode': 'kvm', 'kvm_url': tool.kvm_url,
+            'msg': 'Opening KVM browser link...',
+        })
 
     if not on_render:
         if user.subscription_expires_at and now > user.subscription_expires_at:
@@ -1683,6 +1698,14 @@ def seed():
             conn.execute(sa.text('ALTER TABLE users ADD COLUMN api_token VARCHAR(64);'))
             conn.commit()
         print('[MIGRATION] Added api_token to users')
+
+    # Migrate: add kvm_url column if missing
+    cols_t = [c['name'] for c in insp.get_columns('tools')]
+    if 'kvm_url' not in cols_t:
+        with db.engine.connect() as conn:
+            conn.execute(sa.text('ALTER TABLE tools ADD COLUMN kvm_url VARCHAR(500);'))
+            conn.commit()
+        print('[MIGRATION] Added kvm_url to tools')
 
     # Create email_logs table if not exists
     if 'email_logs' not in [t for t in insp.get_table_names()]:

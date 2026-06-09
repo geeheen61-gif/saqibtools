@@ -122,6 +122,11 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Optional. Upload a thumbnail for this tool.</div>
       </div>
       <div class="form-group">
+        <label>KVM / Browser URL (optional)</label>
+        <input class="form-control" name="kvm_url" type="url" placeholder="https://kvm.example.com/vnc.html?host=...">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">If set, users will open this link directly instead of launching via Playwright.</div>
+      </div>
+      <div class="form-group">
         <label>Session Cookies (JSON Array) <span style="font-weight:normal;text-transform:none;color:var(--slate-400)">(exported via cookie editor)</span></label>
         <textarea class="form-control" name="cookies" placeholder='[{"name":"session_id","value":"abc...","domain":".canva.com"}]' required></textarea>
         <div class="cookie-status"></div>
@@ -174,6 +179,11 @@
         <div id="edit_image_preview" style="margin-top:8px;display:none;">
           <img style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);">
         </div>
+      </div>
+      <div class="form-group">
+        <label>KVM / Browser URL (optional)</label>
+        <input class="form-control" name="kvm_url" id="edit_kvm_url" type="url" placeholder="https://kvm.example.com/vnc.html?host=...">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">If set, users will open this link directly instead of launching via Playwright.</div>
       </div>
       <div class="form-group">
         <label>Session Cookies (JSON Array)</label>
@@ -309,6 +319,7 @@
         document.getElementById('edit_name').value = d.name;
         document.getElementById('edit_category').value = d.category;
         document.getElementById('edit_url').value = d.url;
+        document.getElementById('edit_kvm_url').value = d.kvm_url || '';
         document.getElementById('edit_description').value = d.description || '';
         document.getElementById('edit_cookies').value = JSON.stringify(JSON.parse(d.cookies), null, 2);
         validateCookies(document.getElementById('edit_cookies'));

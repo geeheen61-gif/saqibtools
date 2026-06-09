@@ -32,6 +32,7 @@ class Tool(db.Model):
     description = db.Column(db.Text, default='')
     cookies     = db.Column(db.Text, nullable=False)
     image       = db.Column(db.Text, nullable=True)
+    kvm_url     = db.Column(db.String(500), nullable=True)
     is_active   = db.Column(db.Boolean, default=True)
     created_at  = db.Column(db.DateTime, default=_utcnow)
 
