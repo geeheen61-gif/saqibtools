@@ -1769,6 +1769,11 @@ def seed():
         EmailLog.__table__.create(db.engine)
         print('[MIGRATION] Created email_logs table')
 
+    # Create password_resets table if not exists
+    if 'password_resets' not in [t for t in insp.get_table_names()]:
+        PasswordReset.__table__.create(db.engine)
+        print('[MIGRATION] Created password_resets table')
+
     if not User.query.filter_by(username='admin').first():
         hashed = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode()
         db.session.add(User(username='admin', password=hashed, role='admin'))
