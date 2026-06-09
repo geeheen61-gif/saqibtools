@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Force Logout - Saqib SEO Tools Agency</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --primary: #F97316; --primary-hover: #EA580C; --font: 'Inter', -apple-system, sans-serif; }
+    body { font-family: var(--font); min-height: 100vh; display: flex; background: #000; color: #FAFAFA; }
+    .brand-panel {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px; position: relative; overflow: hidden;
+      background: radial-gradient(ellipse at 30% 40%, rgba(249,115,22,0.12) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 60%, rgba(249,115,22,0.06) 0%, transparent 50%), #000;
+    }
+    .brand-panel::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .brand-content { position: relative; z-index: 2; text-align: center; max-width: 420px; }
+    .brand-content img { width: 140px; height: auto; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 20px 60px rgba(249,115,22,0.2); }
+    .brand-content h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; }
+    .brand-content h1 span { color: var(--primary); }
+    .brand-content p { color: rgba(255,255,255,0.5); font-size: 14px; line-height: 1.7; }
+    .form-panel {
+      width: 480px; min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; padding: 48px; background: #0A0A0A;
+      border-left: 1px solid #1A1A1A; position: relative;
+    }
+    .form-panel::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--primary), #FB923C, var(--primary));
+      background-size: 200% 100%; animation: shimmer 4s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0%,100% { background-position: 0% 0%; } 50% { background-position: 100% 0%; } }
+    .form-header { margin-bottom: 32px; }
+    .form-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .form-header p { color: rgba(255,255,255,0.4); font-size: 14px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .input-wrap { position: relative; }
+    .input-wrap i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.2); font-size: 15px; transition: color 0.2s; }
+    input {
+      width: 100%; padding: 14px 16px 14px 46px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; font-size: 14px;
+      color: white; outline: none; transition: all 0.2s; font-family: inherit;
+    }
+    input::placeholder { color: rgba(255,255,255,0.15); }
+    input:focus { border-color: rgba(249,115,22,0.4); background: rgba(255,255,255,0.06); box-shadow: 0 0 0 4px rgba(249,115,22,0.08); }
+    input:focus ~ i { color: var(--primary); }
+    .btn {
+      width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: white; border: none; border-radius: 14px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: inherit; margin-top: 8px;
+      box-shadow: 0 4px 20px rgba(249,115,22,0.2); position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(249,115,22,0.3); }
+    .btn:active { transform: scale(0.98); }
+    .flash {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      border-radius: 12px; font-size: 13px; font-weight: 500; margin-bottom: 24px;
+    }
+    .flash.error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15); color: #F87171; }
+    .flash.success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); color: #4ADE80; }
+    .flash.info { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.15); color: #FB923C; }
+    .flash i { font-size: 14px; }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.35); font-size: 13px; text-decoration: none; margin-top: 18px; transition: color 0.2s; }
+    .back-link:hover { color: var(--primary); }
+    .footnote { text-align: center; margin-top: 32px; font-size: 12px; color: rgba(255,255,255,0.2); }
+    .otp-input { letter-spacing: 6px; font-size: 20px; text-align: center; font-weight: 700; padding: 14px; }
+    @media (max-width: 860px) {
+      body { flex-direction: column; }
+      .brand-panel { flex: none; padding: 32px 24px; min-height: auto; }
+      .brand-content img { width: 100px; margin-bottom: 14px; }
+      .brand-content h1 { font-size: 20px; }
+      .form-panel { width: 100%; min-height: auto; padding: 32px 24px; border-left: none; }
+      .form-panel::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand-panel">
+    <div class="brand-content">
+      <img src="/static/logo.jpeg" alt="Saqib SEO Tools Agency">
+      <h1>Saqib SEO Tools Agency</h1>
+      <p>Enter the OTP sent to your email to verify your identity and force logout the old session.</p>
+    </div>
+  </div>
+  <div class="form-panel">
+    <div class="form-header">
+      <h2>Verify OTP</h2>
+      <p>Check your email for the 6-digit code.</p>
+    </div>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,msg in msgs %}
+        <div class="flash {{ cat }}"><i class="fas fa-{% if cat == 'success' %}check-circle{% elif cat == 'info' %}info-circle{% else %}exclamation-circle{% endif %}"></i> <span>{{ msg }}</span></div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST">
+      <div class="form-group">
+        <label>OTP Code</label>
+        <div class="input-wrap">
+          <input class="otp-input" name="otp" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" required autofocus autocomplete="one-time-code">
+          <i class="fas fa-shield-alt" style="left:18px;"></i>
+        </div>
+      </div>
+      <button type="submit" class="btn"><i class="fas fa-check"></i> Verify & Login</button>
+    </form>
+    <a class="back-link" href="/login"><i class="fas fa-arrow-left"></i> Back to login</a>
+    <div class="footnote">&copy; 2026 Saqib SEO Tools Agency</div>
+  </div>
+</body>
+</html>

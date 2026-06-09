@@ -82,7 +82,7 @@ db.init_app(app)
 @app.before_request
 def check_session():
     if 'uid' in session and 'session_token' in session:
-        if request.endpoint in ('static', 'login', 'logout', 'forgot_password', 'reset_password', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_tool_image', 'mobile_launch'):
+        if request.endpoint in ('static', 'login', 'logout', 'forgot_password', 'reset_password', 'force_logout_verify', 'health', 'launch_page', 'launch_download', 'claim_launch', 'mobile_login', 'mobile_logout', 'mobile_tools', 'mobile_tool_image', 'mobile_launch'):
             return
         user = db.session.get(User, session['uid'])
         if not user or user.session_token != session['session_token']:
@@ -172,8 +172,19 @@ def login():
             if user.role != 'admin' and (user.session_token or user.api_token):
                 if user.session_token and session.get('session_token') == user.session_token:
                     return redirect(url_for('home'))
-                flash('This account is already logged in from another device. Logout first.', 'error')
-                return render_template('login.html')
+                otp = f'{secrets.randbelow(900000) + 100000}'
+                expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
+                PasswordReset.query.filter_by(user_id=user.id, used=False).delete()
+                db.session.add(PasswordReset(user_id=user.id, otp=otp, expires_at=expires))
+                db.session.commit()
+                send_email_sync(
+                    subject='Force Logout OTP - Saqib SEO Tools Agency',
+                    html_body=render_template('emails/force_logout_otp.html', otp=otp, user=user),
+                    recipient=user.username,
+                )
+                session['force_logout_user_id'] = user.id
+                flash('This account is already logged in. An OTP has been sent to your email to verify and force logout.', 'info')
+                return redirect(url_for('force_logout_verify'))
             tok = secrets.token_hex(32)
             user.session_token = tok
             db.session.commit()
@@ -259,6 +270,45 @@ def reset_password():
         flash('Password updated successfully. You can now log in.', 'success')
         return redirect(url_for('login'))
     return render_template('reset_password.html')
+
+
+# ═══════════════════════════════════════════════════════════
+# FORCE LOGOUT – OTP verify to kick old session
+# ═══════════════════════════════════════════════════════════
+@app.route('/force-logout-verify', methods=['GET', 'POST'])
+def force_logout_verify():
+    user_id = session.get('force_logout_user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    user = db.session.get(User, user_id)
+    if not user:
+        session.pop('force_logout_user_id', None)
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        otp = request.form.get('otp', '').strip()
+        reset = PasswordReset.query.filter_by(
+            user_id=user_id, otp=otp, used=False
+        ).filter(PasswordReset.expires_at > datetime.now(timezone.utc).replace(tzinfo=None)).first()
+        if not reset:
+            flash('Invalid or expired OTP.', 'error')
+            return render_template('force_logout_verify.html')
+        reset.used = True
+        user.session_token = None
+        user.api_token = None
+        db.session.commit()
+        tok = secrets.token_hex(32)
+        user.session_token = tok
+        db.session.commit()
+        session.pop('force_logout_user_id', None)
+        session['uid']           = user.id
+        session['username']      = user.username
+        session['role']          = user.role
+        session['session_token'] = tok
+        flash('Old session logged out. You are now signed in.', 'success')
+        if user.role == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('home'))
+    return render_template('force_logout_verify.html')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -906,26 +956,33 @@ SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
 SMTP_FROM     = os.getenv('SMTP_FROM', SMTP_USERNAME)
 
-def send_email_async(subject, html_body, recipient):
-    def _send():
+def send_email_sync(subject, html_body, recipient):
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = SMTP_FROM
+        msg['To']      = recipient
+        msg.attach(MIMEText(html_body, 'html'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15) as s:
+            s.ehlo()
+            s.starttls()
+            s.ehlo()
+            s.login(SMTP_USERNAME, SMTP_PASSWORD)
+            s.send_message(msg)
+        log = EmailLog(subject=subject, recipient=recipient, status='sent')
+        db.session.add(log)
+        db.session.commit()
+        print(f'[email] Sent to {recipient}: {subject}')
+    except Exception as e:
+        print(f'[email] FAIL to {recipient}: {e}')
         try:
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From']    = SMTP_FROM
-            msg['To']      = recipient
-            msg.attach(MIMEText(html_body, 'html'))
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as s:
-                s.starttls()
-                s.login(SMTP_USERNAME, SMTP_PASSWORD)
-                s.send_message(msg)
-            log = EmailLog(subject=subject, recipient=recipient, status='sent')
-            db.session.add(log)
-            db.session.commit()
-        except Exception as e:
             log = EmailLog(subject=subject, recipient=recipient, status=f'fail: {e}')
             db.session.add(log)
             db.session.commit()
-    threading.Thread(target=_send, daemon=True).start()
+        except Exception:
+            pass
+
+send_email_async = send_email_sync
 
 
 def _render_email(template_name, **kw):
