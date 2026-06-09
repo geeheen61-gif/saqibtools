@@ -949,36 +949,39 @@ def admin_reset_retailer_password(uid):
 
 
 # ═══════════════════════════════════════════════════════════
-# EMAIL – Utilities & Admin routes
+# EMAIL – Brevo HTTP API (works on Render free tier)
 # ═══════════════════════════════════════════════════════════
-SMTP_SERVER   = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT     = int(os.getenv('SMTP_PORT', 587))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-SMTP_FROM     = os.getenv('SMTP_FROM', SMTP_USERNAME)
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'Saqib SEO Tools Agency')
+BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', '')
+BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
 
 def _send_in_background(subject, html_body, recipient):
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From']    = SMTP_FROM
-        msg['To']      = recipient
-        msg.attach(MIMEText(html_body, 'html'))
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15) as s:
-            s.ehlo()
-            s.starttls()
-            s.ehlo()
-            s.login(SMTP_USERNAME, SMTP_PASSWORD)
-            s.send_message(msg)
-        print(f'[email] OK → {recipient}: {subject}')
+        payload = json.dumps({
+            'sender': {'name': BREVO_SENDER_NAME, 'email': BREVO_SENDER_EMAIL},
+            'to': [{'email': recipient}],
+            'subject': subject,
+            'htmlContent': html_body,
+        })
+        req = urllib.request.Request(
+            BREVO_API_URL,
+            data=payload.encode('utf-8'),
+            headers={
+                'api-key': BREVO_API_KEY,
+                'Content-Type': 'application/json',
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            print(f'[email] OK → {recipient}: {subject} (status {resp.status})')
     except Exception as e:
         print(f'[email] FAIL → {recipient}: {str(e)[:200]}')
 
 
 def send_email_async(subject, html_body, recipient):
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
-        print('[email] SKIP — SMTP_USERNAME or SMTP_PASSWORD not set')
+    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
+        print('[email] SKIP — BREVO_API_KEY or BREVO_SENDER_EMAIL not set')
         return
     db.session.rollback()
     threading.Thread(target=_send_in_background, args=(subject, html_body, recipient), daemon=True).start()
@@ -988,8 +991,8 @@ def send_email_async(subject, html_body, recipient):
 def test_email():
     send_email_async(
         subject='Test Email - Saqib SEO Tools Agency',
-        html_body='<h1 style="color:#F97316;">It works!</h1><p>Email sending is configured correctly.</p>',
-        recipient=SMTP_USERNAME,
+        html_body='<h1 style="color:#F97316;">It works!</h1><p>Email sending via Brevo API is configured correctly.</p>',
+        recipient=BREVO_SENDER_EMAIL,
     )
     return 'Email queued. Check your inbox in a few seconds.'
 
