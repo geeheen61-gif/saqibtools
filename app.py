@@ -1531,6 +1531,7 @@ def tool_proxy(token):
     is_chatgpt = 'chatgpt.com' in target or 'chat.openai.com' in target
     is_grammarly = 'grammarly.com' in target
     is_primevideo = 'primevideo.com' in target or '/video' in target
+    is_capcut = 'capcut.com' in target or 'capcutpro' in target
 
     if is_chatgpt:
         sels = json.dumps([
@@ -1611,6 +1612,29 @@ def tool_proxy(token):
             '})();'
             '</script>'
         )
+        html = html.replace('</body>', inject + '\n</body>')
+
+    if is_capcut:
+        sels = json.dumps([
+            '#workspace > div > div.lv-workspace-layout-main > div.lv-workspace-layout-content > div.platform-ui-service-header-container > div',
+            '.platform-ui-service-header-container',
+            '[class*="header-container"]',
+            '[class*="topbar"]',
+        ])
+        inject = (
+            '<script>'
+            '(function(){'
+            'var sels=' + sels + ';'
+            'var s=document.createElement("style");'
+            's.textContent="#workspace{top:0!important}"+sels.join(",")+"{display:none!important}";'
+            'if(document.head)document.head.appendChild(s);'
+            'function h(){for(var si=0;si<sels.length;si++){var e=document.querySelectorAll(sels[si]);for(var i=0;i<e.length;i++){e[i].style.setProperty("display","none","important")}}}'
+            'h();setInterval(h,300);'
+            'if(document.body){var mo=new MutationObserver(function(){h()});mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["style","class"]})}'
+            '})();'
+            '</script>'
+        )
+        html = html.replace('</head>', '<style>#workspace{top:0!important}.platform-ui-service-header-container{display:none!important}</style></head>')
         html = html.replace('</body>', inject + '\n</body>')
 
     return Response(html, content_type='text/html; charset=utf-8')
